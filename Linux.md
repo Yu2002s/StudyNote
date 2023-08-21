@@ -2,6 +2,8 @@
 
 nohup command & 创建进程持续运行
 
+tail -f -n 10 nohup.out  查看日志
+
 kill -9 22899 杀死 进程的pid ，关闭程序。
 
 cat info.log 查看文件

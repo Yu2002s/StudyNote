@@ -1,0 +1,216 @@
+<html>
+  <head>
+	  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>i5ting_ztree_toc:</title>
+		<link href="toc/style/github-bf51422f4bb36427d391e4b75a1daa083c2d840e.css" media="all" rel="stylesheet" type="text/css"/>
+		<link href="toc/style/github2-d731afd4f624c99a4b19ad69f3083cd6d02b81d5.css" media="all" rel="stylesheet" type="text/css"/>
+		<link href="toc/css/zTreeStyle/zTreeStyle.css" media="all" rel="stylesheet" type="text/css"/>
+	  <style>
+		pre {
+		    counter-reset: line-numbering;
+		    border: solid 1px #d9d9d9;
+		    border-radius: 0;
+		    background: #fff;
+		    padding: 0;
+		    line-height: 23px;
+		    margin-bottom: 30px;
+		    white-space: pre;
+		    overflow-x: auto;
+		    word-break: inherit;
+		    word-wrap: inherit;
+		}
+
+		pre a::before {
+		  content: counter(line-numbering);
+		  counter-increment: line-numbering;
+		  padding-right: 1em; /* space after numbers */
+		  width: 25px;
+		  text-align: right;
+		  opacity: 0.7;
+		  display: inline-block;
+		  color: #aaa;
+		  background: #eee;
+		  margin-right: 16px;
+		  padding: 2px 10px;
+		  font-size: 13px;
+		  -webkit-touch-callout: none;
+		  -webkit-user-select: none;
+		  -khtml-user-select: none;
+		  -moz-user-select: none;
+		  -ms-user-select: none;
+		  user-select: none;
+		}
+
+		pre a:first-of-type::before {
+		  padding-top: 10px;
+		}
+
+		pre a:last-of-type::before {
+		  padding-bottom: 10px;
+		}
+
+		pre a:only-of-type::before {
+		  padding: 10px;
+		}
+
+		.highlight { background-color: #ffffcc } /* RIGHT */
+		</style>
+  </head>
+  <body>
+	  <div>
+				<div style='width:25%;'>
+						<ul id="tree" class="ztree" style='width:100%'>
+
+						</ul>
+				</div>
+        <div id='readme' style='width:70%;margin-left:20%;'>
+          	<article class='markdown-body'>
+            	<h5 id="-">常用命令行</h5>
+<p>nohup command &amp; 创建进程持续运行</p>
+<p>tail -f -n 10 nohup.out  查看日志</p>
+<p>kill -9 22899 杀死 进程的pid ，关闭程序。</p>
+<p>cat info.log 查看文件</p>
+<p>ps -ef | grep java 查看java 运行的几个进程 pid</p>
+<p>clear 清除命令行</p>
+<pre><code class="lang-bash"># 清空命令行
+clear 
+# 查看文件内容
+cat xxx
+# 查看IP
+ip addr show
+ip a
+hostname -I
+# 查看当前系统时间
+date
+# 注销
+logout
+# 关机
+shutdown
+# 重启
+reboot
+# 清屏
+clear
+# 查看当前目录下的文件
+ls
+# 查看指定目录下的文件
+ls /
+# 查看详细信息
+ls -l
+ll
+# 查看隐藏文件
+ls -a
+#参数并用
+ls -la
+# 指定目录新建文件
+mkdir -p 文件名
+whereis mysql # 查看软件安装路径
+which mysql # 查看mysql的运行路径
+</code></pre>
+<h6 id="-mysql-gpg-key">更新mysql gpg key</h6>
+<pre><code class="lang-bash">rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+</code></pre>
+<h4 id="-mysql">安装MySql</h4>
+<p>官方文档地址 <a href="https://dev.mysql.com/doc/refman/8.0/en/installing.html">MySQL ：： MySQL 8.0 参考手册 ：： 2 安装和升级 MySQL</a></p>
+<!--Ubuntu跳转第6步-->
+<h6 id="1-mysql">1.检查是否已经安装mysql</h6>
+<p><code>rpm -qa|grep mysql</code></p>
+<p><img src="D:\jdy2002\Note\学习笔记\image\image-20221205161315432.png" alt="image-20221205161315432"></p>
+<h6 id="2-mysql-">2.查看mysql当前状态</h6>
+<p><code>service mysqld status</code></p>
+<p><img src="C:\Users\jdy2002\AppData\Roaming\Typora\typora-user-images\image-20221205154545016.png" alt="image-20221205154545016"></p>
+<h6 id="3-mysql-">3.停止mysql服务</h6>
+<p><code>service mysqld stop</code></p>
+<h6 id="4-mysql">4.卸载mysql</h6>
+<p><code>rpm -ev [需要移除组件的名称]</code></p>
+<p>还需要移除服务</p>
+<p><code>yum remove mysql-server</code></p>
+<p><img src="D:\jdy2002\Note\学习笔记\image\image-20221205161558816.png" alt="image-20221205161558816"></p>
+<p>强制卸载</p>
+<p><code>rpm -e --nodeps [需要移除组件的名称]</code></p>
+<h6 id="5-rpm-mysql">5.使用rpm来安装MySQL</h6>
+<!--Ubuntu无需下载-->
+<p>镜像源链接：<a href="http://repo.mysql.com/">http://repo.mysql.com/ </a>  选择mysql8进行下载</p>
+<p><code>wget http://repo.mysql.com/mysql80-community-release-el7-1.noarch.rpm</code></p>
+<p>下载地址默认保存在当前目录, 添加-O参数可以进行设置保存路径</p>
+<p>切换到Root账户</p>
+<p><code>su root</code></p>
+<p>进行安装</p>
+<p><code>rpm -ivh mysql80-community-release-el7-1.noarch.rpm</code></p>
+<h6 id="6-yum-">6.通过yum命令安装</h6>
+<p><code>yum install mysql-server</code></p>
+<p><code>apt install mysql-server #Ubuntu</code></p>
+<h6 id="7-">7.检查是否启动</h6>
+<p><code>systemctl list-unit-files|grep mysqld</code></p>
+<p><img src="D:\jdy2002\Note\学习笔记\image\image-20221205162831710.png" alt="image-20221205162831710"></p>
+<p>服务是否已开启</p>
+<p><code>ps -ef|grep mysql</code></p>
+<p>启动服务</p>
+<p><code>systemctl start mysqld.service</code></p>
+<h6 id="8-">8.进行初始化</h6>
+<p><code>mysqld --initialize</code></p>
+<p>查看默认密码</p>
+<p><code>grep &#39;temporary password&#39; /var/log/mysqld.log</code></p>
+<p>复制 root@localhost: 后面的密码。登录mysql，并粘贴默认密码</p>
+<p><code>mysql -u root -p</code></p>
+<p>直接粘贴密码</p>
+<h6 id="9-">9.修改密码</h6>
+<p><code>alter user &#39;root&#39;@&#39;localhost&#39; identified by &#39;12345678&#39;;</code></p>
+<p>降低密码等级检查</p>
+<p><code>set global validate_password.policy=0;</code></p>
+<p>设置密码等级策略</p>
+<p><code>set global validate_password.policy=0;</code> </p>
+<p><code>set global validate_password.length=1;</code></p>
+<p>加入权限</p>
+<p><code>grant system_user on *.* to &#39;root&#39;;</code></p>
+<h6 id="10-">10.支持远程链接</h6>
+<p><strong>修改配置文件</strong></p>
+<p><code>cd /etc/mysql/</code></p>
+<p>或</p>
+<p><code>cd /etc/mysql/mysql.conf.d</code></p>
+<p>使用vim进行编辑配置文件</p>
+<p><code>vim mysqld.conf</code></p>
+<p><strong>bindadress = 修改为 0.0.0.0</strong></p>
+<hr>
+<p>第一种方法修改root账户host</p>
+<p><code>use mysql;</code>
+<code>#修改root账户权限</code>
+<code>update user set host = &#39;%&#39; where user = &#39;root&#39;;</code>
+<code>#刷新权限</code>
+<code>flush privileges;</code></p>
+<hr>
+<p>第二种方法添加远程访问</p>
+<p>添加一个账户用于远程访问</p>
+<p><code>use mysql;</code> 选择数据库</p>
+<p><code>create user &#39;admin&#39;@&#39;%&#39; identified by &#39;password&#39;;</code> 构建用户</p>
+<p><code>GRANT ALL PRIVILEGES ON *.* TO &#39;admin&#39;@&#39;%&#39;; #执行授权</code></p>
+<p><code>flush privileges; # 刷新用户权限</code></p>
+<p><code>ALTER USER &#39;admin&#39;@&#39;%&#39; IDENTIFIED WITH mysql_native_password BY &#39;password&#39;;</code> #授权远程访问</p>
+<p><code>flush privileges; #刷新</code></p>
+<h6 id="11-">11.端口设置</h6>
+<p><code>firewall-cmd --zone=public --add-port=3306/tcp --permanent</code></p>
+<p>重启防火墙</p>
+<p><code>systemctl restart firewalld.service</code></p>
+<p>查询防火墙开放端口</p>
+<p><code>firewall-cmd --list-ports</code></p>
+
+          	</article>
+        </div>
+		</div>
+  </body>
+</html>
+<script type="text/javascript" src="toc/js/jquery-1.4.4.min.js"></script>
+<script type="text/javascript" src="toc/js/jquery.ztree.all-3.5.min.js"></script>
+<script type="text/javascript" src="toc/js/ztree_toc.js"></script>
+<script type="text/javascript" src="toc_conf.js"></script>
+
+<SCRIPT type="text/javascript" >
+<!--
+$(document).ready(function(){
+    var css_conf = eval(markdown_panel_style);
+    $('#readme').css(css_conf)
+    
+    var conf = eval(jquery_ztree_toc_opts);
+		$('#tree').ztree_toc(conf);
+});
+//-->
+</SCRIPT>
