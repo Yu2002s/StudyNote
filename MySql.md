@@ -84,3 +84,15 @@ select * from emp where age > (select age from emp where name = '张三');
 select * from emp where dep_id in (select id from dept where dep_name = '销售部' or dep_name = '研发部');
 ```
 
+### 安装
+
+Mysql - windows
+1.下载地址: https://dev.mysql.com/downloads/mysql/
+	选择: Windows (x86, 64-bit), ZIP Archive 下载压缩包
+	Windows (x86, 64-bit), MSI Installer(windows安装器)
+2.进入文件安装(下载)mysql的bin目录，终端输入 mysqld --initialize  --console
+完成后自动生成随机密码
+3.安装mysql并启动，管理员运行 mysqld --install mysql
+4.执行命令 mysql -uroot -p，输入密码
+5.在mysql里执行命令，ALTER USER 'root'@'localhost' IDENTIFIED BY '密码';
+6.在系统环境变量添加变量MYSQL_HOME指向安装路径，随后Path变量添加 %MYSQL_HOME%\bin

@@ -68,7 +68,7 @@ rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 
 `rpm -qa|grep mysql`
 
-![image-20221205161315432](D:\jdy2002\Note\学习笔记\image\image-20221205161315432.png)
+![image-20221205161315432](image\image-20221205161315432.png)
 
 ###### 2.查看mysql当前状态
 
@@ -88,7 +88,7 @@ rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 
 `yum remove mysql-server`
 
-![image-20221205161558816](D:\jdy2002\Note\学习笔记\image\image-20221205161558816.png)
+![image-20221205161558816](image\image-20221205161558816.png)
 
 强制卸载
 
@@ -122,7 +122,7 @@ rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 
 `systemctl list-unit-files|grep mysqld`
 
-![image-20221205162831710](D:\jdy2002\Note\学习笔记\image\image-20221205162831710.png)
+![image-20221205162831710](image\image-20221205162831710.png)
 
 服务是否已开启
 

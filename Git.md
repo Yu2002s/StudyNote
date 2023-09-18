@@ -55,7 +55,8 @@ git branch -d a
 # 强制删除分支
 git branch -D a
 # 生成公钥
-ssh-keygen -t rsa # -b 4096 -C "你的邮箱"
+# ssh-keygen -t rsa # -b 4096 -C "你的邮箱"
+ssh-keygen -t rsa -C "xxxx@xx.com"
 # 查看公钥
 cat ~/.ssh/id_rsa.pub
 # 验证公钥
@@ -101,5 +102,71 @@ git push -u origin main
 ```bash
 # 解决无法连接到github问题
 git config --global http.sslVerify "false"
+```
+
+### 检查ssh密钥
+
+进入当前用户的**.ssh**文件夹，查看是否存在**id_rsa.pub**文件，文件内容就是密钥
+
+```bash
+# 检查ssh密钥
+cd ~/.ssh
+# 查看密钥文件
+cat id_rsa.pub
+```
+
+### 生成ssh密钥
+
+```bash
+# 生成ssh密钥
+ssh-keygen -t rsa -C "xxxx@xx.com"
+```
+
+执行后一直回车即可
+
+### 添加密钥到gitee
+
+### 验证密钥
+
+```bash
+ssh -T git@gitee.com
+```
+
+### 初始化仓库
+
+```bash
+# 初始化仓库
+git init
+# 添加到暂存区
+git add .
+# 提交
+git commit -m "描述"
+```
+
+### 推送代码到远程仓库
+
+```bash
+# 与远程仓库关联
+git remote add origin 远程地址
+# 开始推送
+git push -u origin main
+# 如果本地分支名和远程分支名相同，则可直接push
+```
+
+### 克隆项目到本地
+
+```bash
+git clone 远程地址
+```
+
+### 分支操作
+
+```bash
+# 查看所有分支
+git branch
+# 切换并创建分支
+git checkout -b xxx
+# 删除本地分支
+git branch -d xxx
 ```
 
