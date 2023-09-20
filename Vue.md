@@ -487,8 +487,6 @@ setTimeout(() => {
 
 ```
 
-
-
 ### Props传参
 
 组件
@@ -668,6 +666,155 @@ defineExpose({
   open: () => {
     console.log('test....')
   }
+})
+```
+
+#### 兄弟
+
+A组件
+
+``` vue
+<script setup lang="ts">
+import Bus from '@/Bus'
+
+let flag = false
+const emmitB = () => {
+  flag = !flag
+  Bus.emit('on-click', flag)
+}
+</script>
+
+<template>
+<div>
+  <h1>兄弟组件传参</h1>
+  <h3>A组件</h3>
+  <button @click="emmitB">派发一个事件</button>
+</div>
+</template>
+```
+
+B组件
+
+``` vue
+<script setup lang="ts">
+import Bus from '@/Bus'
+import { ref } from 'vue'
+
+const Flag = ref(false)
+
+Bus.on('on-click', (flag: boolean) => {
+  Flag.value = flag
+})
+</script>
+
+<template>
+<div class="B">
+  <h3>B组件</h3>
+  {{Flag}}
+</div>
+</template>
+```
+
+实现消息订阅与发布
+
+``` ts
+type BusClass = {
+  emit: (name: string) => void
+  on: (name: string, callback: Function) => void
+}
+
+type ParamsKey = string | null | symbol
+
+type List = {
+  [key: ParamsKey]: Array<Function>
+}
+
+class Bus implements BusClass {
+
+  list: List
+
+  constructor() {
+    this.list = {}
+  }
+
+  emit(name: string, ...args: Array<any>) {
+    const eventName: Array<Function> = this.list[name]
+    eventName.forEach(fn => {
+      fn.apply(this, args)
+    })
+  }
+  on(name: string, callback: Function) {
+    const fn: Array<Function> = this.list[name] || []
+    fn.push(callback)
+    this.list[name] = fn
+  }
+}
+
+export default new Bus()
+```
+
+#### mitt
+
+1.全局挂载
+
+```ts
+const Mit = mitt()
+const app = createApp(App)
+
+// ts相关
+declare module 'vue' {
+  export interface ComponentCustomProperties {
+    $Bus: typeof Mit
+  }
+}
+
+// 挂载到全局中
+app.config.globalProperties.$Bus = Mit
+```
+
+2.按需引入
+
+```ts
+import mitt from 'mitt'
+
+const emitter = mitt()
+export default emitter
+```
+
+A组件
+
+```ts
+import { getCurrentInstance } from 'vue'
+
+// 获取组件实例
+const instance =  getCurrentInstance()
+
+// 发送消息
+instance?.proxy?.$Bus.emit('on-click', 'mitt')
+
+const Bus = (str: any) => {
+  console.log(str)
+}
+
+instance?.proxy?.$Bus.on('on-click', Bus)
+
+// 取消监听
+instance?.proxy?.$Bus.off('on-click', Bus)
+
+// 清除全部监听
+instance?.proxy.$Bus.all.clear()
+```
+
+B组件
+
+```ts
+// 接收消息
+instance?.proxy?.$Bus.on('on-click', (str: string) => {
+  console.log(str)
+})
+// 接收全部消息
+instance?.proxy?.$Bus.on('*', (type: string, str: string) => {
+  console.log(type, str)
 })
 ```
 
@@ -886,6 +1033,10 @@ data.value = res
 
 实现异步加载效果
 
+```ts
+const SyncCom = defineAsyncComponent(() => import('@/components/SyncCom.vue'))
+```
+
 ```vue
 <Suspense>
     <template #default>
@@ -895,5 +1046,403 @@ data.value = res
 		<div>正在加载中...</div>
     </template>
 </Suspense>
+```
+
+#### 搭配路由使用
+
+```vue
+<RouterView v-slot="{ Component }">
+  <template v-if="Component">
+    <Transition mode="out-in">
+      <KeepAlive>
+        <Suspense>
+          <!-- 主要内容 -->
+          <component :is="Component"></component>
+
+          <!-- 加载中状态 -->
+          <template #fallback>
+            正在加载...
+          </template>
+        </Suspense>
+      </KeepAlive>
+    </Transition>
+  </template>
+</RouterView>
+```
+
+### Transition
+
+```vue
+<button @click="isShow = !isShow">Toggle</button>
+<Transition>
+    <p v-if="isShow">这是一段文本内容</p>
+</Transition>
+<Transition name="fade">
+    <p v-if="isShow">这是fade动画</p>
+</Transition>
+<Transition name="slide-fade">
+    <p v-if="isShow">这是slide-fade动画</p>
+</Transition>
+<!--
+    duration设置动画总时长
+    appear 表示出现时就执行动画
+    使用插槽可以实现可复用的动画效果
+    使用插槽的组件的style标签不要加上scoped属性
+    mode 指定模式，out-in表示先执行离开时动画在执行进入时动画
+-->
+<Transition name="bounce" :duration="{enter: 800, leave: 700}"
+            @leave="onLeave" appear mode="out-in">
+    <p v-if="isShow" style="text-align: center">Animation动画</p>
+</Transition>
+```
+
+css定义
+
+根据**name**属性定义css选择器
+
+> xxx-enter-from 节点动画进入开始时
+>
+> xxx-enter-active 节点动画进行时
+>
+> xxx-enter-to 节点动画结束时
+>
+> xxx-leave-from 节点移除动画开始时
+>
+> xxx-leave-active 节点移除动画进行时
+>
+> xxx-leave-to 节点被移除时
+
+```css
+<style scoped>
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease-in-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.8s ease-out;
+}
+
+/*离开和进入时的样式*/
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(40px);
+  opacity: 0;
+}
+
+/* 插入时的动画*/
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+/* 移除时的动画*/
+.slide-fade-leave-active {
+  transition: all 0.8s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+/* 插入时的动画*/
+.bounce-enter-active {
+  animation: bounce-in 0.5s;
+}
+
+/* 移除时的动画*/
+.bounce-leave-active {
+  animation: bounce-in 0.5s reverse;
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+</style>
+```
+
+### TransitionGroup
+
+使用方法
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const data = ref<string[]>(['这是Item', '我是一个标签哈哈哈', '充八万了把'])
+
+function addItem() {
+  const index: number = getIndex()
+  data.value.splice(index, 0, 'addItem' + index)
+}
+
+function deleteItem() {
+  if (data.value.length === 0) return
+  const index: number = getIndex()
+  data.value.splice(index, 1)
+}
+
+function getIndex(): number {
+  return Math.floor(Math.random() * data.value.length)
+}
+
+function reset() {
+  data.value.sort(() => Math.random() - 0.5)
+}
+
+</script>
+
+<template>
+<div>
+  <h2>TransitionGroup</h2>
+  <TransitionGroup name="list" tag="ul">
+    <li v-for="item in data" :key="item">
+      {{ item }}
+    </li>
+  </TransitionGroup>
+  <button @click="addItem">添加一项</button>
+  <button @click="deleteItem">删除一项</button>
+  <button @click="reset">重新排序</button>
+</div>
+</template>
+
+<style scoped>
+
+.list-enter-from,
+.list-leave-to {
+  transform: translateX(40px);
+  opacity: 0;
+}
+
+.list-move, /* 对移动中元素应用过渡 */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.8s ease;
+}
+
+/* 确保将离开的元素从布局中删除
+   以便能正确计算出移动的动画 */
+.list-leave-active {
+  position: absolute;
+}
+</style>
+
+```
+
+#### 打乱组合动画
+
+```vue
+<TransitionGroup move-class="mmm" tag="div" class="wraps">
+    <div class="items" v-for="item in list" :key="item.id">
+        {{ item.number}}
+    </div>
+</TransitionGroup>
+<button @click="random">toggle</button>
+```
+
+```ts
+import _ from 'lodash'
+
+const list = ref(Array.apply(null, { length: 81 } as number[]).map((_, index) => {
+  return {
+    id: index,
+    number: index % 9
+  }
+}))
+
+const random = () => {
+  list.value = _.shuffle(list.value)
+}
+```
+
+```css
+.wraps {
+  display: flex;
+  flex-wrap: wrap;
+  width: calc(25px * 10 + 9px);
+}
+
+.wraps .items {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid #ccc;
+}
+
+.mmm {
+  transition: all 1s;
+}
+```
+
+状态动画
+
+`npm install gsap`
+
+```vue
+<input v-model="num.current" step="20" type="number" name="" id="">
+{{ num.tweenedNumber}}
+```
+
+``` ts
+import { gsap } from 'gsap'
+
+const num = reactive({
+  current: 0,
+  tweenedNumber: 0
+})
+
+watch(() => num.current, (newValue: number, oldValue: number) => {
+  gsap.to(
+    num,
+    {
+      duration: 1,
+      tweenedNumber: newValue.toFixed(0)
+    }
+  )
+})
+```
+
+### 依赖注入
+
+根组件
+
+```ts
+// 应用层
+provide<string>(/* 注入名 */'message',/* 注入值 */ 'hello world')
+
+const location = ref<string>('充八万')
+
+function cong() {
+  location.value = '充好了'
+}
+
+provide('location', {
+  location,
+  cong
+})
+
+// 值将不允许被修改
+provide('read-only', readonly(location))
+```
+
+孙子组件
+
+```ts
+const message = inject<string>('message',/* 默认值 */ 'hello')
+const { location, cong } = inject<Ref<string> | Function>('location')
+```
+
+### tsx支持
+
+安装依赖
+
+```bash
+npm install @vitejs/plugin-vue-jsx -D
+```
+
+简单用法
+
+```tsx
+import {defineComponent} from 'vue'
+
+export default defineComponent({
+  data() {
+    return {
+      age: 19
+    }
+  },
+  render() {
+    return (
+      <div>{ this.age }</div>
+    )
+  }
+})
+```
+
+具体用法
+
+```tsx
+import { defineComponent, ref } from 'vue'
+
+interface Props {
+  name?: string
+}
+
+const A = (_: any, {slots}) => (
+  <>
+    <div>{slots.default ? slots.default() : '默认值'}</div>
+    <div>{slots.foo?.()}</div>
+  </>
+)
+
+export default defineComponent({
+  props: {
+    name: String
+  },
+  emits: ['on-click'],
+  setup(props: Props, { emit }) {
+    const flag = ref(false)
+    // tsx需要手动解包
+    // 不支持v-if
+    // return () => (<div v-show={flag.value}>我是tsx</div>)
+    const data = [
+      {
+        name: 'dongyu1'
+      },
+      {
+        name: 'dongyu2'
+      }
+    ]
+    /*return () => (
+      <>
+        <div>{flag.value ? <div>true</div>: <div>false</div>}</div>
+      </>
+    )*/
+
+    const fn = (item: any) => {
+      console.log(item)
+      emit('on-click', item.name)
+    }
+
+    const slot = {
+      default: () => (<div>default slots</div>),
+      foo: () => (<div>foo slots</div>)
+    }
+
+    const v = ref<string>('')
+    return () => (
+      <>
+        <input type="text" v-model={v.value} />
+        <div>{v.value}</div>
+        <hr/>
+        <div>{props.name}</div>
+        <hr/>
+        <A v-slots={slot}></A>
+        <hr/>
+        {
+          data.map(item => {
+            return <div onClick={() => fn(item)}>{item.name}</div>
+          })
+        }
+      </>
+    )
+  }
+})
 ```
 
