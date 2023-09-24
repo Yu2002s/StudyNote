@@ -12,6 +12,12 @@ vue
 npm init vue@latest
 ```
 
+npx
+
+```bash
+npx create-vue demo
+```
+
 ### 响应式
 
 ```ts
@@ -1446,3 +1452,801 @@ export default defineComponent({
 })
 ```
 
+### 状态管理
+
+npm安装**[pinia]([Pinia | The intuitive store for Vue.js (vuejs.org)](https://pinia.vuejs.org/zh/))**
+
+`npm install pinia`
+
+main.ts 安装插件
+
+```ts
+import { createPinia } from 'pinia'
+const app = createApp(App)
+app.use(createPinia())
+```
+
+配置store（counter.ts）
+
+```ts
+import { defineStore } from 'pinia'
+
+// 使用一个对象来定义store
+/*
+export const useCounterStore = defineStore("counter", {
+  state: () => ({count: 0}),
+  actions: {
+    increment() {
+      this.count++
+    }
+  }
+})
+*/
+
+// 使用一个函数定义store
+/*
+export const useCounterStore = defineStore('counter', () => {
+  const count = ref(0)
+
+  function increment() {
+    count.value++
+  }
+
+  return {
+    count, increment
+  }
+})
+*/
+
+/**
+* ts 定义类型
+*/
+interface State {
+  count: number
+  items: Item[]
+  userinfo: UserInfo | null
+}
+
+interface UserInfo {
+  username: string
+  password: string
+}
+
+interface Item {
+  name: string
+  email: string
+}
+
+// 向外导出store
+// 组合式
+export const useCounterStore = defineStore('counter', {
+  state: (): State => ({ count: 0, userinfo: null, items: []}),
+  getters: {
+    double: (state) => state.count * 2
+  },
+  actions: {
+    increment() {
+      this.count++
+    }
+  }
+})
+```
+
+使用
+
+```vue
+<script lang="ts" setup>
+import { useCounterStore } from '@/stores/counter'
+
+const counter = useCounterStore()
+
+// 订阅
+counter.$subscribe((mutation, state) => {
+  console.log(mutation, state)
+})
+
+// 直接使用变量进行自加一
+counter.count++
+
+// 使用内部方法进行自加一
+counter.$patch({ count: counter.count + 1 })
+
+// 使用actions进行自加一
+counter.increment()
+
+// 重置值
+counter.$reset()
+
+// 同时修改多个值
+counter.$patch(state => {
+  state.count = 1
+  state.items.push({name: '123', email: '123'})
+})
+</script>
+
+<template>
+  <div>{{ counter.count }}
+    {{ counter.items }}
+    <button @click="counter.count ++">+1</button>
+  </div>
+</template>
+```
+
+### V-Model
+
+**双向数据绑定**
+
+组件中定义
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+
+// v-model:title 表示指定一个参数
+const props = defineProps({
+  modelValue: String,
+  // v-model 修饰符
+  modelModifiers?: {
+    big: boolean,
+    // 指定一个默认值
+    default: () => ({
+      big: false
+    })
+  }
+}) // modelValue是父组件v-model传递的属性，固定写法
+const emit = defineEmits(['update:modelValue']) // 更新属性值，固定写法
+
+const value = computed({
+  get() {
+    return props.modelValue
+  },
+  set: function(val) {
+    console.log(val)
+    const { big } = props.modelModifiers
+    if (big) {
+      // console.log(props.modelModifiers)
+    }
+    emit('update:modelValue', val)
+  }
+})
+
+const change = (e: Event) => {
+  emit('update:modelValue', (e.target as HTMLInputElement).value)
+}
+
+</script>
+
+<template>
+  <div>
+    <h2>V-Model</h2>
+    <input type="text" :value="modelValue" @input="change">
+    <input type="text" v-model="value">
+  </div>
+</template>
+```
+
+父组件中用法
+
+```vue
+<!--  v-model:title 给v-model指定一个参数，子组件接收属性名将为title  -->
+<V-Model v-model.big="searchText" />
+<div>App组件: search: {{ searchText }}</div>
+```
+
+### 自定义指令
+
+```ts
+// 定义一个自定义指令 v-focus
+const vFocus: Directive = {
+  created: (el, binding, vNode, prevVNode) => {
+    // console.log(el, binding, vNode, prevVNode)
+  },
+  mounted: (el: HTMLInputElement) => {
+    el.focus()
+  },
+  beforeUpdate() {},
+  updated() {}
+}
+
+// 简写
+const vFocus: Directive<HTMLElement, string> = (el, binding) => {
+    
+}
+```
+
+#### 实战用法
+
+可移动的标签
+
+```vue
+<script setup lang="ts">
+import type { Directive, DirectiveBinding } from 'vue'
+
+const vMove: Directive<any, void> = (el: HTMLElement, binding: DirectiveBinding) => {
+  const moveElement: HTMLDivElement = el.firstElementChild as HTMLDivElement
+  console.log(moveElement)
+  const mouseDown = (e: MouseEvent) => {
+    // 鼠标按下时调用这个箭头函数
+    let x = e.clientX - el.offsetLeft
+    let y = e.clientY - el.offsetTop
+    
+    const move = (e: MouseEvent) => {
+      console.log(e)
+       // 具体移动的实现
+      el.style.left = e.clientX - x + 'px'
+      el.style.top = e.clientY - y + 'px'
+    }
+    // 监听鼠标移动事件
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', () => {
+      // 鼠标抬起时删除鼠标移动事件
+      document.removeEventListener('mousemove', move)
+    })
+  }
+  // 监听标题区域鼠标按下的事件
+  moveElement.addEventListener('mousedown', mouseDown)
+}
+</script>
+
+<template>
+<div v-move class="box">
+  <div class="header">这是标题</div>
+  <div>内容</div>
+</div>
+</template>
+
+<style scoped>
+.box {
+  position: absolute;
+  width: 400px;
+  height: 200px;
+  border: 1px solid black;
+}
+    
+.header {
+	cursor: move;
+}
+</style>
+```
+
+图片懒加载
+
+```vue
+<script setup lang="ts">
+import type {Directive} from "vue"
+// glob 是懒加载的模式
+// globEager 直接静态加载
+const imageList: Record<string, { default: string }> = import.meta.glob('./assets/images/**', {eager: true})
+// 对象转换成数组
+const arr = Object.values(imageList).map(item => item.default)
+
+const vLazy: Directive<HTMLImageElement, string> = async (el: HTMLImageElement, binding) => {
+  // 默认占位图
+  const def = await import('./assets/vue.svg')
+  // 设置默认图片
+  el.src = def.default
+  const observer = new IntersectionObserver((entry) => {
+    // 监听图片是否完全显示
+    if (entry[0].intersectionRatio > 0) {
+      setTimeout(() => {
+        // 需要加载的图片
+        el.src = binding.value
+      }, 1000)
+      observer.unobserve(el)
+    }
+  })
+  observer.observe(el)
+}
+</script>
+
+<template>
+  <div>
+    <img v-lazy="item" v-for="(item, index) in arr" :src="item" :key="index" alt="" height="500" width="350">
+  </div>
+</template>
+
+<style lang="css">
+img {
+  display: block;
+}
+</style>
+```
+
+### 自定义hooks
+
+定义转换方法
+
+```ts
+import {onMounted} from "vue"
+
+type Options = {
+  el: string
+}
+
+export default function (options: Options): Promise<{ baseUrl: string }> {
+  return new Promise((resolve) => {
+    onMounted(() => {
+      const img: HTMLImageElement = document.querySelector(options.el) as HTMLImageElement
+      img.onload = () => {
+        resolve({
+          baseUrl: base64(img)
+        })
+      }
+    })
+
+    // 核心实现代码
+    const base64 = (el: HTMLImageElement) => {
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      canvas.width = el.width
+      canvas.height = el.height
+      context?.drawImage(el, 0, 0, canvas.width, canvas.height)
+      return canvas.toDataURL('image/png')
+    }
+  })
+}
+```
+
+使用
+
+```vue
+<script setup lang="ts">
+import useBase64 from './hooks'
+
+useBase64({
+  el: '#img'
+}).then(res => {
+  console.log(res.baseUrl)
+})
+
+</script>
+
+<template>
+  <img src="./assets/images/1.png" alt="" id="img">
+</template>
+```
+
+#### 综合案例
+
+##### 准备工作
+
+1.新建项目
+
+2.创建src目录
+
+3.src目录添加index.ts文件
+
+4.执行命令
+
+```bash
+npm init -y #初始化项目
+npm install -g typescript # 安装ts
+npm install vue -D # 安装vue
+npm install vite # 安装vite
+tsc --init #初始化ts
+```
+
+5.添加文件:
+
+​	`index.d.ts`    `vite.config.ts`
+
+开始 
+
+index.ts
+
+```ts
+// MutationObserver 主要侦听子集的变化 还有属性的变化，以及增删改查
+// ResizeObserver 主要侦听元素宽高的变化
+
+import type { App } from 'vue'
+
+function useResize(el: HTMLElement, callback: Function) {
+  const resize = new ResizeObserver((entries) => {
+    callback(entries[0].contentRect)
+  })
+  resize.observe(el)
+}
+
+const install = (app: App) => {
+   app.directive('resize', {
+     mounted(el, binding) {
+       useResize(el, binding.value)
+     }
+   })
+}
+
+useResize.install = install
+
+export default useResize
+```
+
+vite.config.ts
+
+```ts
+import {defineConfig} from "vite"
+
+export default defineConfig({
+  build: {
+    lib: {
+      entry: 'src/index.ts',
+      name: 'useResize'
+    },
+    rollupOptions: {
+      external: ['vue'],
+      output: {
+        globals: {
+          useResize: 'useResize'
+        }
+      }
+    }
+  }
+})
+```
+
+index.d.ts
+
+```ts
+import {App} from "vue"
+
+declare const useResize: {
+  (el: HTMLElement, callback: Function): void
+  install: (app: App) => void
+}
+
+export default useResize
+```
+
+package.json
+
+> 注意修改 name和version
+
+```json
+{
+  "name": "v-resize-jdy",
+  "version": "0.1.2",
+  "description": "2023-9-21",
+  "main": "./dist/v-resize.umd.js",
+  "module": "dist/v-resize.mjs",
+  "scripts": {
+    "build": "vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "jdy2002",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "vue": "^3.3.4"
+  }
+}
+```
+
+运行 `npm run build` 生成dist文件
+
+打包发布到npm
+
+```bash
+npm login #登录npm
+npm publish #发布
+```
+
+##### 在项目中使用
+
+1.安装依赖
+
+```bash
+npm install v-resize-jdy
+```
+
+2.安装自定义指令插件
+
+```ts
+import useResize from "v-resize-jdy"
+
+// 在main.ts中使用插件
+createApp(App)
+  .use(useResize)
+```
+
+3.使用
+
+```vue
+<script setup lang="ts">
+import useResize from "v-resize-jdy"
+import {onMounted} from "vue"
+
+// 1.直接引入使用
+/*onMounted(() => {
+  useResize(document.querySelector('#resize') as HTMLElement, (e: any) => {
+    console.log(e)
+  })
+})*/
+
+const resizeCallback = (e: any) => {
+  console.log(e)
+}
+</script>
+
+<template>
+  <!-- 2.自定义指令实现 -->
+  <div v-resize="resizeCallback" id="resize"></div>
+</template>
+
+<style lang="css">
+#resize {
+  width: 300px;
+  height: 300px;
+  background-color: pink;
+  border: 1px solid #ccc;
+  resize: both;
+  overflow: hidden;
+}
+</style>
+```
+
+### 全局函数和变量
+
+main.ts
+
+```ts
+const app = createApp(App)
+
+// 配置全局变量 $dev
+app.config.globalProperties.$dev = 'dev'
+// 配置全局函数 format
+app.config.globalProperties.$filters = {
+  format<T> (str: T) {
+    return `东宇-${str}`
+  }
+}
+
+// ts支持
+type Filter = {
+  format<T>(str: T): string
+}
+
+declare module 'vue' {
+  export interface ComponentCustomProperties {
+    $filters: Filter,
+    $dev: string
+  }
+}
+```
+
+组件中使用
+
+```vue
+<script setup lang="ts">
+import { getCurrentInstance } from 'vue'
+
+// 获取实例对象
+const app = getCurrentInstance()
+// 使用
+console.log(app?.proxy?.$filters.format('ts'))
+</script>
+<template>
+    <!-- 直接使用 -->
+	<div>{{$filters.format('的飞机')}}</div>
+</template>
+```
+
+### 插件(Plugin)
+
+实现全局加载插件
+
+定义加载布局
+
+```vue
+<template>
+    <!-- 通过v-if实现显示隐藏效果 -->
+    <div v-if="isShow">Loading...</div>
+</template>
+    
+<script setup lang='ts'>
+import { ref } from 'vue'
+// 这个响应式属性控制显示和隐藏
+const isShow = ref<boolean>(false)
+
+/**
+* 用两个方法来控制
+*/
+const show = () => {
+  isShow.value = true
+}
+
+const hide = () => {
+  isShow.value = false
+}
+
+// 向外导出显示和隐藏方法
+defineExpose({
+  show,
+  hide,
+  isShow
+})
+
+</script>
+    
+<style scoped>
+div {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    padding: 10px 40px;
+    background-color: rgba(255, 255, 255, .3);
+    box-shadow: 1px 1px 2px 2px rgba(0, 0, 0, .3);
+    border-radius: 16px;
+    transform: translate(-50%, -50%);
+}
+</style>
+```
+
+定义插件
+
+```ts
+import type { App, VNode } from 'vue'
+import Loading from './index.vue'
+
+import { createVNode, render } from 'vue'
+
+export default {
+  // 必须使用这个install方法
+  install(app: App) {
+    // 构建成虚拟dom
+    const vNode: VNode = createVNode(Loading)
+    console.log(vNode)
+    // 渲染到body中
+    render(vNode, document.body)
+    // 把显示和隐藏方法挂载到vue全局属性中
+    app.config.globalProperties.loading = {
+        show: vNode.component?.exposed?.show,
+        hide: vNode.component?.exposed?.hide
+    }
+  }
+}
+```
+
+安装插件
+
+```ts
+import Loading from './components/Loading'
+
+const app = createApp(App)
+// 安装插件
+app.use(Loading)
+
+// 解决找不到属性报错的问题
+type Lod = {
+  show: () => void,
+  hide: () => void
+}
+
+declare module 'vue' {
+  export interface ComponentCustomProperties {
+    loading: Lod
+  }
+}
+```
+
+使用
+
+```vue
+<script lang="ts">
+import { getCurrentInstance } from 'vue'
+
+// 获取到vue实例
+const instance = getCurrentInstance()
+
+// 延迟隐藏
+setTimeout(() => {
+  instance?.proxy?.loading.hide()
+}, 5000)
+
+// 显示
+instance?.proxy?.loading.show()
+</script>
+```
+
+### ElementUI自动导入
+
+准备工作
+
+**npm install -D unplugin-auto-import** # 支持自动导入
+
+```bash
+npm install -D unplugin-icons # 自动导入Icon
+npm install -D @iconify-json/ep # 安装图标库（https://icones.netlify.app/）
+npm install -D unplugin-vue-components # 自动导入组件
+```
+
+tsconfig.json
+
+```json
+"include": ["env.d.ts", "src/**/*", "src/**/*.vue", "src/**/*.ts"]
+"compilerOptions": {
+   "types": ["vite/client", "element-plus/global", "unplugin-icons/types/vue"]
+}
+```
+
+vite.config.ts
+
+```ts
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
+import Icons from 'unplugin-icons/vite'
+import IconsResolver from 'unplugin-icons/resolver'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    vue(),
+    AutoImport({
+      // 需要自动导入的文件
+      include: [/\.[tj]sx?$/, /\.vue$/],
+      // 解析器，支持UI组件库自动导入
+      resolvers: [
+        ElementPlusResolver(),
+        // 自动导入图标组件
+        // IconsResolver({
+        //   prefix: 'Icon'
+        // })
+      ],
+      // 自动导入的文件名
+      imports: ['vue'],
+      // 指定生成.d.ts的位置
+      dts: 'src/auto-imports.d.ts'
+    }),
+    Components({
+      resolvers: [
+        // 自动注册图标组件
+        IconsResolver({
+          prefix: '', // 默认前缀是i
+          enabledCollections: ['ep'] // 选择图标库集合 ep
+        }),
+        ElementPlusResolver(),
+      ],
+      // 需要自动导入组件的目录
+      dirs: ['src/components', 'src/views'],
+      // 文件后缀
+      extensions: ['vue'],
+      // 指定.d.ts生成的位置
+      dts: 'src/components.d.ts',
+      // 深度扫描
+      deep: true,
+      // 需要自动导入的文件
+      include: [/.vue$/, /.vue?vue/]
+    }),
+    Icons({
+      autoInstall: true, // 自动安装
+    })
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  }
+})
+```
+
+组件中使用
+
+```vue
+<EpApple />
+
+<ep-add-location />
+
+<EpRefresh />
+```
+
+无需进行手动导入
