@@ -661,7 +661,7 @@ function smallText() {
       <MyComponent 
                    @largeText="args => fontSize += args" 
                    @smallText="args => fontSize -= args" />
-    </div>
+   </div>
 ```
 
 暴露组件属性
@@ -2250,3 +2250,828 @@ export default defineConfig({
 ```
 
 无需进行手动导入
+
+###  CSS相关
+
+#### scope样式穿透
+
+1.给HTML的DOM节点加一个不重复data属性(形如：data-v-123)来表示他的唯一性
+2.在每句css选择器的末尾（编译后的生成的css语句）加一个当前组件的data属性选择器（如[data-v-123]）来私有化样式
+3.如果组件内部包含有其他组件，只会给其他组件的最外层标签加上当前组件的data属性
+
+不适用:deep
+
+```css
+#hello .green {
+  background-color: red;
+}
+```
+
+转换之后
+
+```css
+#hello .green[data-v-7a7a37b1] {
+  background-color: red;
+}
+```
+
+------
+
+使用:deep
+
+``` css
+#hello :deep(.green) {
+  background-color: red;
+}
+```
+
+转换之后
+
+``` css
+#hello[data-v-7a7a37b1] .green {
+  background-color: red;
+}
+```
+
+**使用之后会把data-v属性前移**
+
+#### 插槽选择器
+
+父组件
+
+```vue
+<script setup lang="ts">
+import A from '@/components/A.vue'
+</script>
+
+<template>
+  <A>
+    <div class="a">我是充八万</div>
+  </A>
+</template>
+
+<style scoped>
+
+</style>
+```
+
+子组件A.vue
+
+```vue
+<template>
+  <div>
+  我是插槽
+  <slot></slot>
+</div>
+</template>
+
+<style scoped>
+:slotted(.a) {
+  color: red;
+}
+</style>
+```
+
+如果要在子组件中修改插槽中的内容，需要添加`:slotted(选择器)`
+
+#### 全局选择器
+
+```css
+<style scoped>
+:global(div) {
+  color: pink;
+}
+</style>
+```
+
+global修饰的选择器将是全局生效的
+
+#### 动态CSS
+
+使用v-bind动态绑定css属性值
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const color = ref('pink')
+</script>
+
+<template>
+  <div class="div">
+    动态css
+  </div>
+</template>
+
+<style scoped>
+.div {
+  color: v-bind(color);
+}
+</style>
+```
+
+通过对象形式动态修改
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const style = ref({
+  color: 'blue'
+})
+
+setTimeout(() => {
+  style.value.color = 'skyblue'
+}, 2000)
+</script>
+
+<template>
+  <div class="div">
+    动态css
+  </div>
+</template>
+
+<style scoped>
+.div {
+  color: v-bind('style.color');
+}
+</style>
+```
+
+module形式
+
+```vue
+<template>
+  <div :class="[dy.div, dy.border]">
+    动态css
+  </div>
+</template>
+
+<style module="dy">
+.div {
+  color: red;
+}
+
+.border {
+  border: 1px solid #ccc;
+}
+</style>
+```
+
+script中使用
+
+```vue
+<script setup lang="ts">
+import { useCssModule } from 'vue'
+
+const css = useCssModule('dy')
+console.log(css)
+</script>
+```
+
+### 集成TailWindCSS
+
+安装
+
+```bash
+npm install -D tailwindcss postcss autoprefixer
+```
+
+生成配置文件
+
+```bash
+npx tailwindcss init -p
+```
+
+修改配置文件tailwind.config.js
+
+```js
+module.exports = {
+  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+src目录下创建index.css
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+在main.ts中引入
+
+```ts
+import './index.css'
+```
+
+使用
+
+```vue
+<template>
+  <div class="w-screen h-screen bg-red-600 flex justify-center items-center text-8xl text-slate-200">
+    hello tailwind
+  </div>
+</template>
+```
+
+重新运行项目即可生效
+
+### nextTick
+
+vue更新dom是异步的 数据更新是同步的
+我们本次更新代码是同步代码
+当我们操作dom的时候，发现数据读取的是上次的，就需要使用nextTick
+
+具体实现
+
+```vue
+<script setup lang="ts">
+import { nextTick, reactive, ref } from 'vue'
+
+const list = reactive([
+  {name: 'zhangsan', message: 'xxxxxxx'}
+])
+
+const box = ref<HTMLDivElement>()
+
+const ipt = ref<string>('123')
+
+// vue更新dom是异步的 数据更新是同步的
+// 我们本次更新代码是同步代码
+// 当我们操作dom的时候，发现数据读取的是上次的，就需要使用nextTick
+const send = async () => {
+  list.push({
+    name: 'jdy2002',
+    message: ipt.value
+  })
+  // 1.回调函数的模式
+  // nextTick(() => {})
+  // 2.async await
+  await nextTick()
+  box.value!.scrollTop = 99999
+  // ipt.value = ''
+}
+</script>
+
+<template>
+  <div class="m-auto w-3/5">
+    <h3 class="h-16 text-3xl flex items-center bg-amber-400">张三: xxxxxxxx</h3>
+    <ul ref="box" class="border border-gray-400 my-2 p-1.5 h-60 overflow-y-scroll">
+      <li v-for="(item, index) in list" :key="index">{{item.name}}: {{ item.message }}</li>
+    </ul>
+    <textarea class="w-full border border-gray-400" v-model="ipt"></textarea>
+    <div class="w-full flex justify-end">
+      <button @click="send" type="button" class="flex justify-end">send</button>
+    </div>
+  </div>
+</template>
+```
+
+### 移动端Ionic
+
+配置`jdk`和`android sdk`环境变量
+
+全局安装 `iconic`
+
+```bash
+npm install -g @ionic/cli
+```
+
+创建项目
+
+```bash
+ionic start xxx tabs --type vue
+```
+
+运行项目
+
+```bash
+npm run dev
+```
+
+构建项目
+
+```bash
+npm run build
+```
+
+部署到安卓
+
+```bash
+ionic capacitor copy android
+```
+
+用Android studio打开android文件夹
+
+### H5适配
+
+把所有px单位转换为vw单位
+
+```ts
+// postcss的插件
+import { Plugin } from 'postcss'
+
+const Options= {
+  viewportWidth: 375 // 默认视口宽度
+}
+
+interface Options {
+  viewportWidth?: number
+}
+
+export const PostcssPxToViewport = (options: Options = Options): Plugin => {
+  // 防止用户传入空对象
+  const opt = Object.assign({}, Options, options)
+  return {
+    postcssPlugin: 'postcss-px-to-viewport',
+    // 钩子函数
+    Declaration(node: any) {
+      if (node.value.includes('px')) {
+        const num = parseFloat(node.value)
+        // 将px转换为vw
+        node.value = `${((num / opt.viewportWidth) * 100).toFixed(2)}vw`
+      }
+    }
+  }
+}
+```
+
+vite.config.ts
+
+引入css插件
+
+```ts
+export default defineConfig({
+  plugins: [
+    vue()
+  ],
+  css: {
+    postcss: {
+      plugins: [PostcssPxToViewport()]
+    }
+  }
+  ...
+})
+```
+
+tsconfig.node.json
+
+解决报错问题
+
+```json
+"include": "ts插件位置"
+```
+
+全局样式设置
+
+```css
+<style>
+:root {
+    --size: '14px';
+}
+
+xxx {
+  font-size: var(--size);
+}
+<style>
+```
+
+使用VueUse
+
+```ts
+import { useCssVar } from "@vueuse/core";
+
+const change = (num: number) => {
+  const size = useCssVar('--size')
+  size.value = num + 'px'
+}
+```
+
+### unoCss原子化
+
+```bash
+npm install unocss
+```
+
+main.ts
+
+```ts
+import 'uno.css'
+```
+
+vite.config.ts
+
+```ts
+export default defineConfig({
+  plugins: [
+    vue(),
+    unoCss({
+      rules: [
+        [
+          'flex',
+          {
+            display: 'flex'
+          }
+        ],
+        [
+          'red',
+          {
+            color: 'red'
+          }
+        ],
+        [
+          /^m-(\d+)$/,
+          ([, d]) => ({
+            margin: `${Number(d) * 10}px`
+          })
+        ]
+      ],
+      // 快捷方式
+      shortcuts: {
+        fr: ['flex', 'red']
+      }
+    })
+  ]
+})
+```
+
+具体使用
+
+```vue
+<template>
+  <div class="flex red m-10">
+    div
+  </div>
+</template>
+```
+
+预设
+
+```ts
+import {presetIcons, presetAttributify, presetUno} from 'unocss'
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    unoCss({
+      presets: [presetIcons(), presetAttributify(), presetUno()],
+    })
+ ]
+```
+
+安装图标库
+
+```bash
+npm install -D @iconify-json/ic # ic为图标库名称 google material design
+```
+
+具体使用
+
+```vue
+<template>
+  <!-- presetAttributify -->
+  <div class="fr" m="10" flex red>
+    div
+  </div>
+  <!-- presetIcons -->
+  <div class="i-ic-baseline-access-alarms"></div>
+  <!-- presetUno -->
+  <div class="tailwind类名"></div>
+</template>
+```
+
+### electron桌面程序
+
+安装
+
+```bash
+npm install electron electron-builder -D
+```
+
+### 编译宏
+
+```vue
+<template>
+  <div>child</div>
+  <ul>
+    <li v-for="(item, index) in data" :key="index">
+      <slot :item="item" :index="index"></slot>
+    </li>
+  </ul>
+  <!-- <button @click="sned">派发</button> -->
+</template>
+
+<script setup lang="ts" generic="T">
+// defineSlots只有声明没有参数，没有任何参数，只能接收ts的类型
+defineSlots<{
+  default(props: {item: T, index: number}): void
+}>()
+
+defineProps<{
+  data: T[]
+}>()
+/* const props = defineProps({
+  name: {
+    type: Array as PropType<string[]>,
+    required: true,
+  },
+}) */
+/* const props = defineProps<{
+  name: string[]
+}>()
+console.log(props) */
+
+// vue3.3对defineProps的改进，新增了对泛型支持
+/*defineProps<{
+  name: T[]
+}>()*/
+
+// const emit = defineEmits(['change'])
+/* const emit = defineEmits<{
+  (e: "change", value: string): void
+}>() */
+// vue3.3改进
+/* const emit = defineEmits<{
+  'change': [name: string]
+}>()
+
+const send = () => {
+  emit("change", "hello")
+} */
+// vue3.3内置了defineOptions 不需要下载插件
+// 他里面属性跟optionsAPI一模一样的
+defineOptions({
+  name: 'dongyu',
+  
+})
+</script>
+
+<style scoped></style>
+```
+
+### 环境变量
+
+.env.development 创建开发环境变量 
+
+```tex
+VITE_HTTP = http://www.baidu.com
+```
+
+.env.production 创建生产环境变量 
+
+```tex
+VITE_HTTP = http://www.jd.com
+```
+
+组件中读取
+
+```ts
+console.log(import.meta.env)
+```
+
+在配置文件中获取
+
+vite.config.ts
+
+```ts
+import { defineConfig, loadEnv } from 'vite'
+
+export default ({mode}: any) => {
+  console.log(loadEnv(mode, process.cwd()))
+  return defineConfig({...})
+}
+```
+
+### Webpack构建Vue
+
+1.创建一个空项目
+
+2.创建目录public, src
+
+3.执行命令
+
+```bash
+npm init -y # 初始化包管理器
+tsc --init # 初始化typescript
+```
+
+4.在src创建assets，views，App.vue，main.ts
+
+5.在public创建index.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>webpack demo</title>
+</head>
+<body>
+<div id="app"></div>
+</body>
+</html>
+```
+
+6.新建webpack.config.js配置文件
+
+7.安装webpack、webpack-cli、webpack-dev-server、html-webpack-plugin
+
+```bash
+npm install webpack webpack-cli webpack-dev-server html-webpack-plugin
+```
+
+8.配置webpack.config.js
+
+```js
+const { Configuration } = require('webpack')
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+
+/**
+ *
+ * @type {Configuration} 支持类型提示
+ */
+const config = {
+  mode: "development", // 开发模式
+  entry: './src/main.ts', // 入口文件位置
+  output: { // 配置输出文件
+    filename: "[hash].js", // 打包后的文件名
+    path: path.resolve(__dirname, 'dist') // 打包后的文件生成路径
+  },
+  resolve: {
+    // 别名
+    alias: {
+      // @表示src的路径
+      '@': path.resolve(__dirname, 'src')
+    },
+    // 导入时自动补全后缀
+    extensions: ['.vue', '.ts', '.js']
+  },
+  plugins: [ // 打包插件 生成template模板
+    new HtmlWebpackPlugin({
+      template: "./public/index.html" // 模板位置
+    })
+  ]
+}
+
+module.exports = config;
+```
+
+9.添加命令
+
+package.json
+
+```json
+"scripts": {
+    "dev": "webpack-dev-server",
+    "build": "webpack"
+  },
+```
+
+10.安装vue
+
+```bash
+npm install vue
+```
+
+11.解决引入vue组件报错问题
+
+src新建`env.d.ts`
+
+```ts
+declare module '*.vue' {
+  import { DefineComponent } from 'vue'
+  const component: DefineComponent<{}, {}, any>
+  export default component
+}
+```
+
+12.配置入口文件**main.ts**
+
+```ts
+import {createApp} from "vue";
+import App from "./App.vue";
+
+createApp(App).mount('#app')
+```
+
+13.配置loader加载器
+
+安装
+
+```bash
+npm install vue-loader@next @vue/compiler-sfc
+```
+
+webpack.config.js
+
+```js
+module: {
+  // loader配置
+  rules: [
+    {
+      test: /\.vue$/,
+      use: 'vue-loader'
+    }
+  ]
+},
+plugins: [
+  ...
+  new VueLoaderPlugin()
+]
+```
+
+支持加载css、less
+
+```bash
+npm install css-loader style-loader less less-loader
+```
+
+```js
+rules: [
+    {
+        // 支持加载 css文件
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+    },
+    {
+        test: /\.less$/,
+        use: ['style-loader', 'css-loader', 'less-loader']
+    }
+]
+```
+
+14.引入css|less文件
+
+```vue
+<template>
+  <div>
+    App123
+  </div>
+</template>
+
+<script setup>
+import '@/assets/index.css' // css
+// import '@/assets/index.less' less
+</script>
+
+<style scoped>
+
+</style>
+```
+
+15.typescript支持
+
+```bash
+npm install typescript ts-loader
+```
+
+```js
+rules: [
+    {
+        test: /\.ts$/,
+        loader: "ts-loader",
+        options: {
+          configFile: path.resolve(process.cwd(), "tsconfig.json"),
+          appendTsSuffixTo: [/\.vue$/]
+        }
+    }
+]
+```
+
+```vue
+<script setup lang="ts">
+import '@/assets/index.less'
+import {ref} from "vue";
+
+const name = ref<string>('冬雨')
+</script>
+```
+
+16.优化打包日志
+
+```bash
+npm install friendly-errors-webpack-plugin
+```
+
+webpack.config.js
+
+```js
+stats: "errors-only",
+plugins: [
+   new FriendlyErrorsWebpackPlugin({
+    	compilationSuccessInfo: { // 编译成功后打印的内容
+       		messages: ['You application is running here: http://localhost:8080']
+    	}
+	}) 
+]
+```
+
