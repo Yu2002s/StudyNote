@@ -50,6 +50,7 @@ toRef: 只能修改响应式对象的值，非响应式视图毫无变化
 
 ```ts
 const like = toRef(man, 'like')
+like.value = 'xxx'
 ```
 
 toRefs: 响应式对象中属性支持响应式
@@ -1452,7 +1453,7 @@ export default defineComponent({
 })
 ```
 
-### 状态管理
+### 状态管理(Pinia)
 
 npm安装**[pinia]([Pinia | The intuitive store for Vue.js (vuejs.org)](https://pinia.vuejs.org/zh/))**
 
@@ -1543,6 +1544,21 @@ const counter = useCounterStore()
 // 订阅
 counter.$subscribe((mutation, state) => {
   console.log(mutation, state)
+  mutation.type // 'direct' | 'patch object' | 'patch function'
+  // 和 cartStore.$id 一样
+  mutation.storeId // 'cart'
+  // 只有 mutation.type === 'patch object'的情况下才可用
+  mutation.payload // 传递给 cartStore.$patch() 的补丁对象。
+
+  // 每当状态发生变化时，将整个 state 持久化到本地存储。
+  localStorage.setItem('cart', JSON.stringify(state))
+}, {
+    // 组件销毁时依然订阅
+    detached: true,
+    // 深度订阅
+    deep: true,
+    // 改变时机
+    flush: 'post'
 })
 
 // 直接使用变量进行自加一
@@ -1562,6 +1578,35 @@ counter.$patch(state => {
   state.count = 1
   state.items.push({name: '123', email: '123'})
 })
+    
+counter.$state = {
+   count: 1
+}
+    
+const unsubscribe = counter.$OnAction(({
+    name, // action 名称
+    store, // store 实例，类似 `someStore`
+    args, // 传递给 action 的参数数组
+    after, // 在 action 返回或解决后的钩子
+    onError, // action 抛出或拒绝的钩子
+  }) => {
+    console.log(arg)
+    // 这将在 action 成功并完全运行后触发。
+    // 它等待着任何返回的 promise
+    after((result) => {
+        console.log('after')
+    })
+    
+    // 如果 action 抛出或返回一个拒绝的 promise，这将触发
+    onError((error) => {
+      console.warn(
+        `Failed "${name}" after ${Date.now() - startTime}ms.\nError: ${error}.`
+      )
+    })
+})
+
+// 手动取消订阅
+unsubscribe()
 </script>
 
 <template>
@@ -1570,6 +1615,63 @@ counter.$patch(state => {
     <button @click="counter.count ++">+1</button>
   </div>
 </template>
+```
+
+#### 一些问题
+
+结构store对象的值将不再具备响应式，所以通常将store对象转换成ref
+
+```ts
+const {count} = storeToRefs(Test)
+```
+
+#### 持久化数据
+
+```ts
+type Options = {
+  key: string
+}
+
+// 默认key
+const __piniaKey__: string = 'dongyu'
+
+// 保存数据到本地
+const setStorage = (key: string, value: any) => {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
+// 从本地获取数据
+const getStorage = (key: string) => {
+  const value = localStorage.getItem(key)
+  return value ? JSON.parse(value as string) : {}
+}
+
+// 插件
+const piniaPlugin = (options: Options) => {
+  return (context: PiniaPluginContext) => {
+    const {store} = context
+    // 首先先从本地获取数据
+    const data = getStorage(`${options?.key ?? __piniaKey__}-${store.$id}`)
+    // 监听store数据变化
+    store.$subscribe(() => {
+      console.log('change')
+      // 通过对应id保存至本地
+      // 注意，选项式需要使用toRaw(store.$state)
+      setStorage(`${options?.key ?? __piniaKey__}-${store.$id}`, store.$state) 
+    })
+    // 返回数据并挂载到store上
+    return {
+      ...data
+    }
+  }
+}
+
+const pinia = createPinia()
+app.use(pinia)
+// 注册一个插件
+pinia.use(piniaPlugin({
+  key: 'pinia'
+}))
 ```
 
 ### V-Model
@@ -3072,6 +3174,542 @@ plugins: [
        		messages: ['You application is running here: http://localhost:8080']
     	}
 	}) 
+],
+externals: {
+   vue: 'Vue' // 不将vue打包进js，使用在线地址引入
+}
+```
+
+### 性能优化
+
+安装分析插件
+
+```bash
+npm install rollup-plugin-visualizer
+```
+
+使用
+
+```ts
+plugins: [visualizer({open: true})]
+```
+
+打包配置优化
+
+```ts
+build: {
+    // 打包警告大小
+    chunkSizeWarningLimit: 2000,
+    // css文件拆分
+    cssCodeSplit: true,
+    // 关闭sourcemap
+    sourcemap: false,
+    // esbuild打包速度快，terser打包体积小
+    minify: 'terser',
+    // 图片转base64限制大小
+    assetsInlineLimit: 4000
+}
+```
+
+pwa
+
+```bash
+npm install vite-plugin-pwa
+```
+
+```ts
+plugins: [
+    VitePWA({
+      workbox:{
+        cacheId:"XIaoman",//缓存名称
+        runtimeCaching:[
+          {
+            urlPattern:/.*\.js.*/, //缓存文件
+            handler:"StaleWhileRevalidate", //重新验证时失效
+            options:{
+              cacheName:"XiaoMan-js", //缓存js，名称
+              expiration:{
+                maxEntries:30, //缓存文件数量 LRU算法
+                maxAgeSeconds:30 * 24 * 60 * 60 //缓存有效期
+              }
+            }
+          }
+        ]
+      },
+    })
 ]
 ```
 
+图片懒加载
+
+```bash
+npm install vue3-lazy
+```
+
+```ts
+plugins: [
+    lazyPlugin()
+]
+```
+
+```vue
+<img v-lazy="user avatar">
+```
+
+### web Components
+
+Web Components 提供了基于原生支持的、对视图层的封装能力，可以让单个组件相关的 javaScript、css、html模板运行在以html标签为界限的局部环境中，不会影响到全局，组件间也不会相互影响 。 再简单来说：就是提供了我们自定义标签的能力，并且提供了标签内完整的生命周期 。
+
+用法
+
+```js
+class Btn extends HTMLElement {
+  constructor() {
+    super();
+
+    const shaDow = this.attachShadow({mode: "open"})
+
+    /*this.p = this.h('p')
+    this.p.innerText = 'dongyu'
+    this.p.setAttribute('style', 'width: 200px; height: 200px; border: 1px solid red;')*/
+
+    this.template = this.h('template')
+    this.template.innerHTML = `
+      <style>
+        div {
+          width: 200px;
+          height: 200px;
+          border: 1px solid red;
+        }
+      </style>
+      <div>dongyu</div>
+    `
+    // shaDow.appendChild(this.p)
+    shaDow.appendChild(this.template.content.cloneNode(true))
+  }
+
+  /**
+   * 生命周期
+   */
+  //当自定义元素第一次被连接到文档 DOM 时被调用。
+  connectedCallback() {
+    console.log('我已经插入了！！！嗷呜')
+  }
+
+  //当自定义元素与文档 DOM 断开连接时被调用。
+  disconnectedCallback() {
+    console.log('我已经断开了！！！嗷呜')
+  }
+
+  //当自定义元素被移动到新文档时被调用
+  adoptedCallback() {
+    console.log('我被移动了！！！嗷呜')
+  }
+  //当自定义元素的一个属性被增加、移除或更改时被调用
+  attributeChangedCallback() {
+    console.log('我被改变了！！！嗷呜')
+  }
+
+  h(el) {
+    return document.createElement(el)
+  }
+}
+
+window.customElements.define('dongyu-btn', Btn);
+```
+
+网页中引入
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Title</title>
+	<script src="./btn.js"></script>
+</head>
+<body>
+    <dongyu-btn></dongyu-btn>
+    <dongyu-btn></dongyu-btn>
+    <dongyu-btn></dongyu-btn>
+    <dongyu-btn></dongyu-btn>
+</body>
+</html>
+```
+
+在vue中使用
+
+```ts
+plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag.startsWith('dongyu-')
+        }
+      }
+    })
+]
+```
+
+新建组件custom-vue.ce.vue（必须.ce.vue结尾）
+
+```vue
+<script setup lang="ts">
+defineProps<{
+  obj: any
+}>()
+</script>
+
+<template>
+  <div>dongyu</div>
+  <div>{{JSON.parse(obj)}}</div>
+</template>
+
+<style scoped>
+
+</style>
+```
+
+在App.vue中使用
+
+```vue
+<script setup lang="ts">
+import CustomVue from './components/custom-vue.ce.vue'
+import {defineCustomElement} from "vue";
+	
+const Btn = defineCustomElement(CustomVue)
+
+window.customElements.define('dongyu-btn', Btn)
+
+const obj = {name: 'dongyu'}
+</script>
+
+<template>
+  <dongyu-btn :obj="JSON.stringify(obj)"></dongyu-btn>
+</template>
+```
+
+### Proxy(代理)
+
+解决请求跨域的问题
+
+vite.config.ts
+
+```ts
+server: {
+    // 只适合本地开发，生产环境无效
+    proxy: {
+      // 将代理 /api这个请求地址
+      '/api': {
+        target: "http://localhost:9999", // 目标服务器请求地址
+        changeOrigin: true, // 是否有跨域
+        // 实际请求地址没有/api这个路径，所以将/api替换为空
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      }
+    }
+  }
+```
+
+### 可视化
+
+Api接口
+
+1.安装环境
+
+```bash
+npm install ts-node -g # node中使用ts需要(第一次使用全局安装)
+npm init -y # 初始化包管理工具
+npm install @types/node -D # 添加node类型支持
+npm install express -S # 安装express
+npm install @types/express -D # 安装express 类型支持
+npm install axios -S # 安装axios请求工具
+```
+
+代码地址 [github](https://github.com/Yu2002s/COVID-19)
+
+### Router(路由)
+
+安装依赖
+
+```bash
+npm install vue-router
+```
+
+使用示例
+
+/router/index.js
+
+```ts
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '@/views/Home.vue'
+import About from '@/views/About.vue'
+import User from '@/views/User.vue'
+import NotFound from '@/components/NotFound.vue'
+import UserProfile from '@/views/UserProfile.vue'
+import UserPosts from '@/views/UserPosts.vue'
+import UserHome from '@/views/UserHome.vue'
+import Register from '@/views/Register.vue'
+import LeftSlide from '@/views/LeftSlide.vue'
+import RightSlide from '@/views/RightSlide.vue'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      components: {
+        default: Home,
+        LeftSlide,
+        RightSlide
+      },
+      // 独享守卫
+      // 只有在进入时触发，不会在params、query、 hash改变是触发
+      //只有在从一个不同的路由导航时才会被触发
+      beforeEnter: (to, from) => {
+        // console.log('enter')
+        // return false
+      }
+    },
+    {
+      path: '/about/:id',
+      name: 'about',
+      // route level code-splitting
+      // this generates a separate chunk (About.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: About,
+      // 定义元数据
+      meta: {
+        // 只有身份验证成功后才能进入
+        requiresAuth: true
+      }
+    },
+    {
+      name: 'user-parent',
+      path: '/users/:id',
+      component: User,
+      sensitive: false,
+      children: [
+        {
+          path: '',
+          name: 'user-home',
+          component: UserHome
+        },
+        {
+          name: 'user-profile',
+          path: 'profile',
+          component: UserProfile
+        },
+        {
+          name: 'user-posts',
+          path: 'posts',
+          component: UserPosts
+        }
+      ]
+    },
+    {
+      name: 'NotFound',
+      // 匹配所有的地址，如果前面规则为匹配，则展示notfound
+      path: '/:pathMatch(.*)*',
+      component: NotFound
+    },
+    {
+      path: '/user-:afterUser(.*)',
+      component: User
+    },
+    {
+      // :orderId 仅匹配数字
+      // path: '/:orderId(\\d+)',
+      // 匹配 /one, /one/two, /one/two/three
+      // path: '/:chapters+',
+      // 匹配 /, /one, /one/two
+      name: 'chapters',
+      path: '/:chapters*',
+      // 匹配 /1, /1/2
+      // path: '/:chapters(\\d+)+',
+      // 匹配 /, /1, /1/2
+      // path: '/:chapters(\\d+)*',
+      // 匹配 /users/, /users/jdy
+      // path: '/users/:userId?',
+      // 匹配 /users, /users/12
+      // path: '/users/:userId(\\d+)?',
+      component: NotFound
+    },
+    {
+      name: 'register',
+      path: '/register',
+      component: Register
+    },
+    {
+      name: 'search',
+      path: '/search/:searchText',
+      redirect: (to) => {
+        return {
+          path: '/users',
+          name: 'user-home',
+          params: {
+            id: to.params.searchText
+          }
+        }
+      }
+    },
+    {
+      // /users/jdy/posts 重定向到 /users/jdy/profile
+      path: '/users/:id/posts',
+      redirect: (to) => {
+        return 'profile'
+      }
+      // 设置别名, 访问 /jdy 将展示
+      // alias: ['/jdy', 'jdy2']
+    }
+  ],
+  // 全局规则
+  strict: true, // 末尾不能出现/
+  sensitive: true, // 区分大小写
+  scrollBehavior(to, from, savedPosition) {
+    if (to.hash) {
+      return {
+        el: '#root',
+        top: -100,
+       // hash: to.hash
+      }
+    }
+    return savedPosition
+  }
+})
+
+router.onError(() => {
+  console.log('error')
+})
+
+/*router.beforeEach(async (to, from, next) => {
+  console.log('beforeEach: ', to.path)
+  // 访问到定义的元数据，判断是否需要进行身份验证
+  console.log(to.meta.requiresAuth)
+  if (i >= 3) {
+    i = 0
+    // console.log('about')
+    // 进行重定向跳转到指定页面
+    // return {name: 'about', params: {id: 'jdy'}}
+    // 也可以使用next方法进行跳转
+    // return '/about/jdy'
+    next('/about/jdy')
+  } else {
+    i++
+    next()
+  }
+  // return 可以取消导航
+  // return false
+})*/
+
+/*router.beforeResolve((to) => {
+  if (i >= 3) {
+    i = 0
+    return false
+  } else {
+    i++
+  }
+
+  console.log('beforeResolve: ', to.path)
+})*/
+
+/*router.afterEach((to, from, failure) => {
+  console.log('afterEach: ', to.fullPath)
+})*/
+
+export default router
+```
+
+main.ts
+
+```tsx
+import router from './router/index.js'
+
+app.use(router)
+```
+
+App.vue
+
+```vue
+<script setup lang="ts"></script>
+
+<template>
+  <div id="app-container">
+    <RouterLink to="/">Home</RouterLink>
+    <RouterLink to="/about/id">About</RouterLink>
+    <RouterLink to="/users/john">John</RouterLink>
+    <RouterLink to="/users/dongyu">Dongyu</RouterLink>
+    <RouterLink to="/users/john/profile">Profile</RouterLink>
+    <RouterLink to="/users/dongyu/posts">Posts</RouterLink>
+    <RouterLink to="/a">测试</RouterLink>
+    <RouterLink to="/user-a">前缀匹配</RouterLink>
+    <div id="main">
+      <RouterView name="LeftSlide" />
+      <RouterView v-slot="{ Component, route }">
+        <Transition name="fade">
+          <component :is="Component" :key="route.path" />
+        </Transition>
+      </RouterView>
+      <RouterView name="RightSlide" />
+    </div>
+  </div>
+</template>
+
+<style scoped lang="less">
+#app-container {
+  height: 100%;
+}
+
+a {
+  color: black;
+  text-decoration: none;
+  padding: 6px;
+
+  &:hover {
+    color: skyblue;
+  }
+}
+
+#main {
+  display: flex;
+  height: 100%;
+
+  & > div {
+    flex: 1;
+    height: 100%;
+  }
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transform: translateX(100px);
+  transition: all 0.8s ease;
+}
+</style>
+```
+
+### pm2(node进程管理)
+
+全局安装依赖
+
+```bash
+npm install pm2 -g
+```
+
+使用方法
+
+```bash
+pm2 start index.js [--watch] -n 指定名称 # 启动进程
+pm2 log # 查看日志
+pm2 list #查看进程列表
+pm2 stop 0 # 根据id停止进程
+pm2 restart 0 # 重启进程
+pm2 delete 0 # 删除进程
+pm2 monit # 进入管理页面
+```

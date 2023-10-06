@@ -46,19 +46,153 @@ ls -la
 mkdir -p 文件名
 whereis mysql # 查看软件安装路径
 which mysql # 查看mysql的运行路径
+
+adduser # 添加用户
+passwd # 设置用户密码
+localectl set-locale LANG=zh_CN.UTF8 # 设置语言为中文
 ```
+
+### Nginx-Go-Access(日志分析器)
+
+安装
+
+```bash
+# 安装 goaccess
+apt install goaccess
+# 格式化日志
+goaccess -f xxx.log
+```
+
+开启报告分析
+
+```bash
+goaccess access.log -a -o ../html/report.html --real-time-html --log-format=COMBINED
+```
+
+nginx日志目录: /var/log/nginx/access.html
+
+nginx html根目录：/usr/share/nginx/html
+
+查看报告: 浏览器访问 http://host/report.html
+
+### 防火墙
+
+解决wsl2执行systemctl报错问题
+
+```bash
+sudo apt-get install daemonize
+sudo daemonize /usr/bin/unshare --fork --pid --mount-proc /lib/systemd/systemd --system-unit=basic.target
+exec sudo nsenter -t $(pidof systemd) -a su - $LOGNAME
+```
+
+安装防火墙
+
+```bash
+apt install firewalld
+```
+
+查看防火墙状态
+
+```bash
+sudo service status firewalld
+firewall-cmd state
+```
+
+启动防火墙
+
+```bash
+service firewalld start
+```
+
+	启动一个服务：systemctl start firewalld.service
+关闭一个服务：systemctl stop firewalld.service
+重启一个服务：systemctl restart firewalld.service
+显示一个服务的状态：systemctl status firewalld.service
+在开机时启用一个服务：systemctl enable firewalld.service
+在开机时禁用一个服务：systemctl disable firewalld.service
+查看服务是否开机启动：systemctl is-enabled firewalld.service
+查看已启动的服务列表：systemctl list-unit-files|grep enabled
+查看启动失败的服务列表：systemctl --failed
+
+3.配置firewalld-cmd
+
+查看版本： firewall-cmd --version
+
+查看帮助： firewall-cmd --help
+
+显示状态： firewall-cmd --state
+
+查看所有打开的端口： firewall-cmd --zone=public --list-ports
+
+更新防火墙规则： firewall-cmd --reload
+
+查看区域信息:  firewall-cmd --get-active-zones
+
+查看指定接口所属区域： firewall-cmd --get-zone-of-interface=eth0
+
+拒绝所有包：firewall-cmd --panic-on
+
+取消拒绝状态： firewall-cmd --panic-off
+
+查看是否拒绝： firewall-cmd --query-panic
+
+那怎么开启一个端口呢
+
+添加
+
+firewall-cmd --zone=public --add-port=80/tcp --permanent   （--permanent永久生效，没有此参数重启后失效）
+
+重新载入
+
+firewall-cmd --reload
+
+查看
+
+firewall-cmd --zone=public --query-port=80/tcp
+
+删除
+
+firewall-cmd --zone=public --remove-port=80/tcp --permanent
+
+### Nginx
+
+1.安装 ：[nginx: Linux packages](https://nginx.org/en/linux_packages.html#Ubuntu)
+
+2.配置防火墙，开放80端口
+
+3.配置环境变量
+
+4.输入命令nginx启动服务器
+
+5.停止nginx
+
+```bash
+nginx -s stop
+# 等待请求完成后再停止
+nginx -s quite
+```
+
+6.重载
+
+```bash
+nginx -s reload
+```
+
+7.配置路径 **/ect/nginx/nginx.config**
+
+8.检查配置
+
+```bash
+nginx -t
+```
+
+#### 安装MySql
 
 ###### 更新mysql gpg key
 
 ```bash
 rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 ```
-
-
-
-
-
-#### 安装MySql
 
 官方文档地址 [MySQL ：： MySQL 8.0 参考手册 ：： 2 安装和升级 MySQL](https://dev.mysql.com/doc/refman/8.0/en/installing.html)
 
