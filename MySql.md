@@ -86,6 +86,8 @@ select * from emp where dep_id in (select id from dept where dep_name = '销售�
 
 ### 安装
 
+#### Windows
+
 Mysql - windows
 1.下载地址: https://dev.mysql.com/downloads/mysql/
 	选择: Windows (x86, 64-bit), ZIP Archive 下载压缩包
@@ -96,3 +98,69 @@ Mysql - windows
 4.执行命令 mysql -uroot -p，输入密码
 5.在mysql里执行命令，ALTER USER 'root'@'localhost' IDENTIFIED BY '密码';
 6.在系统环境变量添加变量MYSQL_HOME指向安装路径，随后Path变量添加 %MYSQL_HOME%\bin
+
+#### Linux from Ubuntu
+
+### 初始化
+
+没有初始密码，解决办法
+
+```bash
+mysql -uroot -p # 无密码直接进入mysql
+use mysql; # 选择mysql数据库
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456'; # 设置密码
+```
+
+#### 支持远程链接
+
+查询配置文件位置
+
+```bash
+whereis mysql;
+```
+
+修改conf配置文件，使用vim进行编辑配置文件
+
+`vim mysqld.conf`
+
+bindadress = 修改为 0.0.0.0 (可选)
+
+------
+
+##### 第一种方法修改root账户host
+
+```bash
+use mysql; # 使用mysql数据库
+update user set host = '%' where user = 'root'; #修改root账户权限
+flush privileges; #刷新权限
+```
+
+------
+
+##### 第二种方法添加远程访问
+
+添加一个账户用于远程访问
+
+`use mysql;` 选择数据库
+
+`create user 'admin'@'%' identified by 'password'; ` 构建用户
+
+`GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%'; #执行授权`
+
+`flush privileges; # 刷新用户权限`
+
+`ALTER USER 'admin'@'%' IDENTIFIED WITH mysql_native_password BY 'password'; ` #授权远程访问
+
+`flush privileges; #刷新`
+
+##### 端口设置
+
+`firewall-cmd --zone=public --add-port=3306/tcp --permanent`
+
+重启防火墙
+
+`systemctl restart firewalld.service`
+
+查询防火墙开放端口
+
+`firewall-cmd --list-ports`
