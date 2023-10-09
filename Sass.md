@@ -52,6 +52,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // 引入全局变量存放位置
         additionalData: `@import "./src/bem.scss";`
       }
     }

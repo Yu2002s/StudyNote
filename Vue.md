@@ -479,7 +479,7 @@ pnpm commitlint
 
 当我们 commit 提交信息时，就不能再随意写了，必须是 git commit -m 'fix: xxx' 符合类型的才可以，**需要注意的是类型的后面需要用英文的 :，并且冒号后面是需要空一格的，这个是不能省略的**
 
-##### 强制使用pnpm包管理器工具
+##### 强制使用pnpm
 
 团队开发项目的时候，需要统一包管理器工具,因为不同包管理器工具下载同一个依赖,可能版本不一样,
 
@@ -506,6 +506,138 @@ if (!/pnpm/.test(process.env.npm_execpath || '')) {
 ```
 
 **当我们使用npm或者yarn来安装包的时候，就会报错了。原理就是在install的时候会触发preinstall（npm提供的生命周期钩子）这个文件里面的代码。**
+
+##### SVG图标配置
+
+在开发项目的时候经常会用到svg矢量图,而且我们使用SVG以后，页面上加载的不再是图片资源,
+
+这对页面性能来说是个很大的提升，而且我们SVG文件比img要小的很多，放在项目中几乎不占用资源。
+
+**安装SVG依赖插件**
+
+```bash
+pnpm install vite-plugin-svg-icons -D
+```
+
+**在`vite.config.ts`中配置插件**
+
+```ts
+import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
+import path from 'path'
+export default () => {
+  return {
+    plugins: [
+      createSvgIconsPlugin({
+        // Specify the icon folder to be cached
+        iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
+        // Specify symbolId format
+        symbolId: 'icon-[dir]-[name]',
+      }),
+    ],
+  }
+}
+```
+
+**入口文件导入**
+
+```js
+import 'virtual:svg-icons-register'
+```
+
+**svg封装为全局组件**
+
+因为项目很多模块需要使用图标,因此把它封装为全局组件！！！
+
+**在src/components目录下创建一个SvgIcon组件:代表如下**
+
+```vue
+<template>
+  <div>
+    <svg :style="{ width: width, height: height }">
+      <use :xlink:href="prefix + name" :fill="color"></use>
+    </svg>
+  </div>
+</template>
+
+<script setup lang="ts">
+defineProps({
+  //xlink:href属性值的前缀
+  prefix: {
+    type: String,
+    default: '#icon-'
+  },
+  //svg矢量图的名字
+  name: String,
+  //svg图标的颜色
+  color: {
+    type: String,
+    default: ""
+  },
+  //svg宽度
+  width: {
+    type: String,
+    default: '16px'
+  },
+  //svg高度
+  height: {
+    type: String,
+    default: '16px'
+  }
+
+})
+</script>
+<style scoped></style>
+```
+
+在src文件夹目录下创建一个index.ts文件：用于注册components文件夹内部全部全局组件！！！
+
+```ts
+import SvgIcon from './SvgIcon/index.vue';
+import type { App, Component } from 'vue';
+const components: { [name: string]: Component } = { SvgIcon };
+export default {
+    install(app: App) {
+        Object.keys(components).forEach((key: string) => {
+            app.component(key, components[key]);
+        })
+    }
+}
+```
+
+在入口文件引入src/index.ts文件,通过app.use方法安装自定义插件
+
+```ts
+import gloablComponent from './components/index';
+app.use(gloablComponent);
+```
+
+**批量全局注册组件(代码优化)**
+
+index.ts vue插件
+
+```ts
+import { App, Component } from 'vue'
+import SvgIcon from '@/components/SvgIcon/index.vue'
+
+// 定义类型
+type ComponentType = {
+    [key: string]: Component
+}
+
+// 所有组件储存在对象中
+const allGlobalComponents: ComponentType = { SvgIcon }
+
+export default {
+  // vue插件的install方法
+  install(app: App) {
+    // 将对象的key转换成数组并进行便利
+    Object.keys(allGlobalComponents).forEach((key: string) => {
+      // 使用app的全局注册方法，key为组件名，进行全局注册组件
+      app.component(key, allGlobalComponents[key])
+    })
+  },
+}
+```
 
 ### 响应式
 
@@ -4314,3 +4446,256 @@ pm2 restart 0 # 重启进程
 pm2 delete 0 # 删除进程
 pm2 monit # 进入管理页面
 ```
+
+### Mock数据
+
+安装依赖:https://www.npmjs.com/package/vite-plugin-mock
+
+```bash
+pnpm install -D vite-plugin-mock mockjs
+```
+
+在 vite.config.js 配置文件启用插件。
+
+```ts
+import { UserConfigExport, ConfigEnv } from 'vite'
+import { viteMockServe } from 'vite-plugin-mock'
+import vue from '@vitejs/plugin-vue'
+
+export default ({ command }: ConfigEnv): UserConfigExport => {
+  return {
+    plugins: [
+      vue(),
+      viteMockServe({
+        // default
+        mockPath: 'mock',
+        enable: command === 'serve',
+      }),
+    ],
+  }
+}
+
+/**
+* {
+    mockPath?: string;
+    ignore?: RegExp | ((fileName: string) => boolean);
+    watchFiles?: boolean;
+    enable?: boolean;
+    ignoreFiles?: string[];
+    configPath?: string;
+}
+*/
+```
+
+**解决项目报错问题**
+
+在node_modules/vite-plugin-mock/dist/index.mjs这个文件中做如下配置：
+
+```ts
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+```
+
+在根目录创建mock文件夹:去创建我们需要mock数据与接口！！！
+
+在mock文件夹内部创建一个user.ts文件
+
+```ts
+//用户信息数据
+function createUserList() {
+    return [
+        {
+            userId: 1,
+            avatar:
+                'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+            username: 'admin',
+            password: '111111',
+            desc: '平台管理员',
+            roles: ['平台管理员'],
+            buttons: ['cuser.detail'],
+            routes: ['home'],
+            token: 'Admin Token',
+        },
+        {
+            userId: 2,
+            avatar:
+                'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+            username: 'system',
+            password: '111111',
+            desc: '系统管理员',
+            roles: ['系统管理员'],
+            buttons: ['cuser.detail', 'cuser.user'],
+            routes: ['home'],
+            token: 'System Token',
+        },
+    ]
+}
+
+export default [
+    // 用户登录接口
+    {
+        url: '/api/user/login',//请求地址
+        method: 'post',//请求方式
+        response: ({ body }) => {
+            //获取请求体携带过来的用户名与密码
+            const { username, password } = body;
+            //调用获取用户信息函数,用于判断是否有此用户
+            const checkUser = createUserList().find(
+                (item) => item.username === username && item.password === password,
+            )
+            //没有用户返回失败信息
+            if (!checkUser) {
+                return { code: 201, data: { message: '账号或者密码不正确' } }
+            }
+            //如果有返回成功信息
+            const { token } = checkUser
+            return { code: 200, data: { token } }
+        },
+    },
+    // 获取用户信息
+    {
+        url: '/api/user/info',
+        method: 'get',
+        response: (request) => {
+            //获取请求头携带token
+            const token = request.headers.token;
+            //查看用户信息是否包含有次token用户
+            const checkUser = createUserList().find((item) => item.token === token)
+            //没有返回失败的信息
+            if (!checkUser) {
+                return { code: 201, data: { message: '获取用户信息失败' } }
+            }
+            //如果有返回成功信息
+            return { code: 200, data: {checkUser} }
+        },
+    },
+]
+```
+
+### axios二次封装
+
+在开发项目的时候避免不了与后端进行交互,因此我们需要使用axios插件实现发送网络请求。在开发项目的时候
+
+我们经常会把axios进行二次封装。
+
+目的:
+
+1:使用请求拦截器，可以在请求拦截器中处理一些业务(开始进度条、请求头携带公共参数)
+
+2:使用响应拦截器，可以在响应拦截器中处理一些业务(进度条结束、简化服务器返回的数据、处理http网络错误)
+
+在根目录下创建utils/request.ts
+
+```ts
+import axios from "axios";
+import { ElMessage } from "element-plus";
+//创建axios实例
+let request = axios.create({
+    baseURL: import.meta.env.VITE_APP_BASE_API,
+    timeout: 5000
+})
+//请求拦截器
+request.interceptors.request.use(config => {
+    return config;
+});
+//响应拦截器
+request.interceptors.response.use((response) => {
+    return response.data;
+}, (error) => {
+    //处理网络错误
+    let msg = '';
+    let status = error.response.status;
+    switch (status) {
+        case 401:
+            msg = "token过期";
+            break;
+        case 403:
+            msg = '无权访问';
+            break;
+        case 404:
+            msg = "请求地址错误";
+            break;
+        case 500:
+            msg = "服务器出现问题";
+            break;
+        default:
+            msg = "无网络";
+
+    }
+    ElMessage({
+        type: 'error',
+        message: msg
+    })
+    return Promise.reject(error);
+});
+export default request;
+```
+
+### API接口统一管理
+
+在开发项目的时候,接口可能很多需要统一管理。在src目录下去创建api文件夹去统一管理项目的接口；
+
+/api/user/index.ts
+
+```ts
+// 统一管理项目用户相关的接口
+import request from "@/utils/request"
+import type { LoginFrom, LoginResponseData, UserResponseData } from "./types"
+// 统一管理接口
+
+enum API {
+    LOGIN_URL = '/user/login',
+    USERINFO_URL = '/user/info',
+}
+
+// 对外暴露请求函数
+export const login = (data: LoginFrom) => request.post<LoginResponseData>(API.LOGIN_URL, data)
+// 暴露获取用户信息函数
+export const getUserInfo = () => request.get<UserResponseData>(API.USERINFO_URL)
+```
+
+定义类型 /api/user/types.ts
+
+```ts
+// 登录接口需要携带参数的ts类型
+
+export interface LoginFrom {
+    username: string
+    password: string
+}
+
+interface DataType {
+    token: string
+}
+
+// 登录接口返回的数据类型
+
+export interface LoginResponseData {
+    code: number,
+    data: DataType
+}
+
+// 定义服务器返回用户信息相关的数据类型
+
+interface UserInfo {
+    userId: number,
+    avatar: string,
+    username: string,
+    password: string,
+    desc: string,
+    rules: string[],
+    buttons: string[],
+    routes: string[],
+    token: string
+}
+
+interface User {
+    checkUser: UserInfo
+}
+
+export interface UserResponseData {
+    code: number,
+    data: User
+}
+```
+
