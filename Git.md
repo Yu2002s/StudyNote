@@ -96,7 +96,7 @@ git remote add origin https://github.com/Yu2002s/project01.git`
 git branch -M main
 # 第一次推送分支到远程仓库
 # git push -u 远程仓库别名 本地分支名称:远程仓库名称
-git push -u origin main
+git push -u origin main:main
 ```
 
 ```bash

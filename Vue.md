@@ -10,6 +10,7 @@ vue
 
 ```bash
 npm init vue@latest
+npm create vue@latest # 方式2
 ```
 
 npx
@@ -3915,7 +3916,7 @@ externals: {
 
 ### 性能优化
 
-安装分析插件
+#### 安装分析插件
 
 ```bash
 npm install rollup-plugin-visualizer
@@ -3944,7 +3945,7 @@ build: {
 }
 ```
 
-pwa
+#### pwa
 
 ```bash
 npm install vite-plugin-pwa
@@ -3973,7 +3974,7 @@ plugins: [
 ]
 ```
 
-图片懒加载
+#### 图片懒加载
 
 ```bash
 npm install vue3-lazy
@@ -3987,6 +3988,72 @@ plugins: [
 
 ```vue
 <img v-lazy="user avatar">
+```
+
+js实现懒加载
+
+```ts
+ // intersectionObserver 交叉观察 ： 目标元素和可视窗口会产生交叉区域
+  const imagess = [...document.querySelectorAll('img')]
+
+  // 2.1 创建视觉交叉的观察实例
+  const observer = new IntersectionObserver(callback)
+  // 2.2 给每一个图片绑定观察方法
+  imagess.forEach(img => {
+    // 2.3 图片进入视野+离开视野时触发 - 回调
+    observer.observe(img)
+  })
+
+  // callback 接收的参数为带有监听所有图片交叉属性的集合
+  const callback = (imgArr) => {
+    console.log('视图交叉时触发，离开交叉时也触发', imgArr) // imgArr为
+    imgArr.forEach(e => {
+      // 判断是否在视野区域
+      if (e.isIntersecting) {
+        e.target.src = e.target.dataset.src
+        // 取消观察追踪，避免重复加载同一张图片
+        observer.unobserve(e.target)
+      }
+    })
+  }
+```
+
+vue实现懒加载
+
+```ts
+// 导入默认图片
+import defaultImg from '@/assets/images/01.png'
+// 引入监听是否进入视口
+import { useIntersectionObserver } from '@vueuse/core'
+export default {
+  // 需要拿到 main.js 中由 createApp 方法产出的 app 实例对象
+  install (app) {
+    // app 实例身上有我们想要的全局注册指令方法  调用即可
+    app.directive('lazyImg', {
+      mounted (el, binding) {
+        // el:img dom对象
+        // binding.value  图片url地址
+        // 使用 vueuse/core 提供的监听 api 对图片 dom 进行监听 正式进入视口才加载
+        // img.src = url
+        console.log(el, binding)
+        const { stop } = useIntersectionObserver(
+          // 监听目标元素
+          el,
+          ([{ isIntersecting }], observerElement) => {
+            if (isIntersecting) {
+              // ◆图片加载失败显示默认图片
+              el.onerror = function () {
+                el.src = defaultImg
+              }
+              // ◆这里显示传过来的图片数据
+              el.src = binding.value
+              stop()// 中止监听
+            }
+          })
+       }
+    })
+  }
+}
 ```
 
 ### web Components
