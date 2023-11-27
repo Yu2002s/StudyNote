@@ -1127,7 +1127,7 @@ setTimeout(() => {
 #### 父传子
 
 ```ts
-const props = defineOptions({
+const props = defineProps({
   title: {
     type: String,
     default: 'default'
@@ -3346,6 +3346,101 @@ export default defineConfig({
 
 无需进行手动导入
 
+### ElementUI修改默认样式
+
+覆盖ElementUI的默认样式
+
+#### CSS快速覆盖
+
+对应style使用css变量方式进行修改
+
+#### **SCSS变量**
+
+src新建/styles/variables.scss
+
+```scss
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': green,
+    ),
+    'success': (
+      'base': #21ba45,
+    ),
+    'warning': (
+      'base': #f2711c,
+    ),
+    'danger': (
+      'base': #db2828,
+    ),
+    'error': (
+      'base': #db2828,
+    ),
+    'info': (
+      'base': #42b8dd,
+    ),
+  ),
+  $button-padding-horizontal: (
+    'default': 80px,
+  )
+);
+
+// 如果是全局导入，添加ElementUI的样式
+// sass推荐使用@use方式进行导入
+// @use "element-plus/theme-chalk/src/index.scss" as *;
+```
+
+##### 全局导入（不推荐）
+
+main.ts
+
+```ts
+import ElementPlus from 'element-plus'
+// 已导入scss样式，无需全局导入ElementUI的css样式
+// import 'element-plus/dist/index.css'
+// 导入已覆盖的样式，进行样式覆盖
+import './styles/variables.scss'
+
+// 安装插件，全局导入
+app.use(ElementPlus)
+```
+
+##### 按需导入（推荐）
+
+修改vite.config.ts文件
+
+```ts
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    vue(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+    }),
+    Components({
+      resolvers: [ElementPlusResolver({
+        importStyle: "sass"
+      })],
+    }),
+  ],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "@/styles/variables.scss" as *;`
+      }
+    }
+  },
+})
+```
+
 ###  CSS相关
 
 #### scope样式穿透
@@ -4937,6 +5032,79 @@ export default [
 ]
 ```
 
+user.ts 模拟例子
+
+```ts
+import Mock from 'mockjs'
+import type { MockMethod } from 'vite-plugin-mock'
+
+const userList = Mock.mock({
+  "data|6": [
+    {
+      "id|+1": 1,
+      username: "@cname",
+      password: /.{6,10}/,
+      'avatar': "@image('100x100', '#000', '#ffffff', 'Hello')",
+      'mobile': /^1[3456789]\d{9}/,
+      'a|1-10': '@cname',
+    }
+  ]
+})
+
+export default [
+  {
+    url: '/api/login',
+    method: 'post',
+    response: ({ body }) => {
+      const { username, password } = body
+      return {  
+        code: 200,
+        username,
+        password,
+        data: userList,
+      }
+    },
+  },
+  {
+    url: '/api/user',
+    method: 'get',
+    response: ({ query }) => {
+      return {
+        code: 200,
+        data: {
+          username: query.username
+        }
+      }
+    }
+  },
+  {
+    url: '/api/user/list',
+    method: 'get',
+    timeout: 2000,
+    response: {
+      code: 200,
+      data: userList
+    }
+  },
+  {
+    url: '/api/sign',
+    method: 'post',
+    rawResponse: async (req, res) => {
+      let reqBody = ''
+      await new Promise((resolve) => {
+        req.on('data', (chunk) => {
+          reqBody = chunk
+        })
+        req.on('end', () => resolve(undefined))
+      })
+      res.setHeader('Context-Type', "text/plain")
+      res.statusCode = 200
+      res.end(`hello, ${reqBody}`)
+    }
+  }
+] as MockMethod[]
+```
+
 ### axios二次封装
 
 在开发项目的时候避免不了与后端进行交互,因此我们需要使用axios插件实现发送网络请求。在开发项目的时候
@@ -5064,3 +5232,14 @@ export interface UserResponseData {
 }
 ```
 
+### Express
+
+全局安装express-generator
+
+```bash
+npm install express-generator
+
+express --view=ejs server
+```
+
+访问 localhost:3000
