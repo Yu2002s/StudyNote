@@ -1,10 +1,10 @@
 ##### 更新数据
 
 ```java
-//更新的条件以及字段
+// 更新的条件以及字段
 UpdateWrapper<User> wrapper = new UpdateWrapper<>();
 wrapper.eq("id", 6).set("age", 23); 
-//执行更新操作
+// 执行更新操作
 int result = this.userMapper.update(null, wrapper); 
 System.out.println("result = " + result);
 ```

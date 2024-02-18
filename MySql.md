@@ -92,14 +92,24 @@ Mysql - windows
 1.下载地址: https://dev.mysql.com/downloads/mysql/
 	选择: Windows (x86, 64-bit), ZIP Archive 下载压缩包
 	Windows (x86, 64-bit), MSI Installer(windows安装器)
-2.进入文件安装(下载)mysql的bin目录，终端输入 mysqld --initialize  --console
-完成后自动生成随机密码
-3.安装mysql并启动，管理员运行 mysqld --install mysql
-4.执行命令 mysql -uroot -p，输入密码
-5.在mysql里执行命令，ALTER USER 'root'@'localhost' IDENTIFIED BY '密码';
-6.在系统环境变量添加变量MYSQL_HOME指向安装路径，随后Path变量添加 %MYSQL_HOME%\bin
 
-#### Linux from Ubuntu
+在系统环境变量添加变量MYSQL_HOME指向安装路径，随后Path变量添加 %MYSQL_HOME%\bin
+
+2.进入文件安装(下载)mysql的bin目录，终端输入 `mysqld --initialize  --console`  或 `mysqld --initialize-insecure`
+完成后自动生成随机密码
+3.安装mysql服务并启动，管理员运行 mysqld --install mysql
+
+4.net start mysql
+
+5.修改默认密码
+
+mysqladmin -u root password 1234
+
+6.执行命令 mysql -uroot -p，输入密码
+
+7.在mysql里执行命令，ALTER USER 'root'@'localhost' IDENTIFIED BY '密码';
+
+#### Linux for Ubuntu
 
 ### 初始化
 

@@ -4,13 +4,15 @@ vite
 
 ```bash
 npm init vite@latest
+# npm create vite@latest
+# npm create vite@latest my-project --template vue-ts
 ```
 
 vue
 
 ```bash
 npm init vue@latest
-npm create vue@latest # 方式2
+# npm create vue@latest # 方式2
 ```
 
 npx
@@ -70,6 +72,8 @@ pnpm i eslint -D
 npx eslint --init 
 # 或
 npm init @eslint/config
+# 或
+pnpm eslint --init
 ```
 
 **.eslint.cjs配置文件**
@@ -243,6 +247,53 @@ pnpm install -D eslint-plugin-prettier prettier eslint-config-prettier
   "endOfLine": "auto",
   "trailingComma": "all",
   "tabWidth": 2
+}
+```
+
+规则解释
+
+```js
+{
+  // 一行最多多少个字符
+  printWidth: 150,
+  // 指定每个缩进级别的空格数
+  tabWidth: 2,
+  // 使用制表符而不是空格缩进行
+  useTabs: false,
+  // 在语句末尾是否需要分号
+  semi: false,
+  // 是否使用单引号
+  singleQuote: true,
+  // 更改引用对象属性的时间 可选值"<as-needed|consistent|preserve>"
+  quoteProps: "as-needed",
+  // 在JSX中使用单引号而不是双引号
+  jsxSingleQuote: false,
+  // 多行时尽可能打印尾随逗号。（例如，单行数组永远不会出现逗号结尾。） 可选值"<none|es5|all>"，默认none
+  trailingComma: "es5",
+  // 在对象文字中的括号之间打印空格
+  bracketSpacing: true,
+  // jsx 标签的反尖括号需要换行
+  jsxBracketSameLine: false,
+  // 在单独的箭头函数参数周围包括括号 always：(x) => x \ avoid：x => x
+  arrowParens: "always",
+  // 这两个选项可用于格式化以给定字符偏移量（分别包括和不包括）开始和结束的代码
+  rangeStart: 0,
+  rangeEnd: Infinity,
+  // 指定要使用的解析器，不需要写文件开头的 @prettier
+  requirePragma: false,
+  // 不需要自动在文件开头插入 @prettier
+  insertPragma: false,
+  // 使用默认的折行标准 always\never\preserve
+  proseWrap: "preserve",
+  // 指定HTML文件的全局空格敏感度 css\strict\ignore
+  htmlWhitespaceSensitivity: "css",
+  // Vue文件脚本和样式标签缩进
+  vueIndentScriptAndStyle: false,
+  //在 windows 操作系统中换行符通常是回车 (CR) 加换行分隔符 (LF)，也就是回车换行(CRLF)，
+  //然而在 Linux 和 Unix 中只使用简单的换行分隔符 (LF)。
+  //对应的控制字符为 "\n" (LF) 和 "\r\n"(CRLF)。auto意为保持现有的行尾
+  // 换行符使用 lf 结尾是 可选值"<auto|lf|crlf|cr>"
+  endOfLine: "auto",
 }
 ```
 
@@ -995,7 +1046,7 @@ export const computed = (getter: Function) => {
 import {ref, watchEffect} from "vue";
 
 const message = ref<string>('飞机')
-const message2 = ref<string>('飞机杯子')
+const message2 = ref<string>('火车')
 
 const unWatch = watchEffect((onCleanup) => {
   console.log('message: ', message.value)
@@ -1006,6 +1057,7 @@ const unWatch = watchEffect((onCleanup) => {
 }, {
   flush: "pre",
   onTrigger (e) {
+    // debuger调试
     debugger
   }
 })
@@ -1447,7 +1499,7 @@ instance?.proxy?.$Bus.on('*', (type: string, str: string) => {
 })
 ```
 
-### ref与$parent
+### ref与$parent、$children
 
 ref,提及到ref可能会想到它可以获取元素的DOM或者获取子组件实例的VC。既然可以在父组件内部通过ref获取子组件实例VC，那么子组件内部的方法与响应式数据父组件可以使用的。
 
@@ -2322,6 +2374,8 @@ const {count} = storeToRefs(Test)
 
 #### 持久化数据
 
+持久化插件：[https://prazdevs.github.io/pinia-plugin-persistedstate](vscode-file://vscode-app/e:/apps/Microsoft VS Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)
+
 ```ts
 type Options = {
   key: string
@@ -2367,6 +2421,45 @@ app.use(pinia)
 pinia.use(piniaPlugin({
   key: 'pinia'
 }))
+```
+
+####  持久化数据（插件）
+
+插件文档地址:  [快速开始 | pinia-plugin-persistedstate (prazdevs.github.io)](https://prazdevs.github.io/pinia-plugin-persistedstate/zh/guide/)
+
+安装
+
+```bash
+pnpm i pinia-plugin-persistedstate
+```
+
+使用插件
+
+```ts
+import persist from 'pinia-plugin-persistedstate'
+
+pinia.use(persist)
+```
+
+在store中使用 （组合式）
+
+```ts
+export const useCountStore = defineStore('count', () => {
+    state: () => ({ count: 0 }),
+    ...
+}, {
+    // uni-app使用此方法
+    persist: {
+      storage: {
+        getItem(key: string) {
+          return uni.getStorageSync(key)
+        },
+        setItem(key: string, value: any) {
+          uni.setStorageSync(key, value)
+        },
+      },
+    },
+},)
 ```
 
 #### Vuex
@@ -2726,6 +2819,28 @@ const change = (e: Event) => {
 <!--  v-model:title 给v-model指定一个参数，子组件接收属性名将为title  -->
 <V-Model v-model.big="searchText" />
 <div>App组件: search: {{ searchText }}</div>
+```
+
+#### 简化写法(vue3.4+)
+
+```js
+// 声明 "modelValue" prop，由父组件通过 v-model 使用
+const model = defineModel()
+// 或者：声明带选项的 "modelValue" prop
+const model = defineModel({ type: String })
+
+// 在被修改时，触发 "update:modelValue" 事件
+model.value = "hello"
+
+// 声明 "count" prop，由父组件通过 v-model:count 使用
+const count = defineModel("count")
+// 或者：声明带选项的 "count" prop
+const count = defineModel("count", { type: Number, default: 0 })
+
+function inc() {
+  // 在被修改时，触发 "update:count" 事件
+  count.value++
+}
 ```
 
 ### 自定义指令
@@ -4073,6 +4188,38 @@ import { defineConfig, loadEnv } from 'vite'
 export default ({mode}: any) => {
   console.log(loadEnv(mode, process.cwd()))
   return defineConfig({...})
+}
+```
+
+vite.config.ts （ts支持）
+
+```ts
+import { ConfigEnv, loadEnv, UserConfigExport } from 'vite'
+import uni from '@dcloudio/vite-plugin-uni'
+
+// https://vitejs.dev/config/
+export default ({ command, mode }: ConfigEnv): UserConfigExport => {
+  console.log(command, mode)
+  const env = loadEnv(mode, process.cwd())
+  return {
+    build: {
+      // 生产环境关闭源码映射
+      sourcemap: mode === 'development',
+    },
+    plugins: [uni()],
+    server: {
+      proxy: {
+        [env.VITE_H5_API]: {
+          // 代理服务器地址
+          target: env.VITE_APP_API,
+          changeOrigin: true,
+          rewrite(path) {
+            return path.replace(/^\/api/, '')
+          },
+        },
+      },
+    },
+  }
 }
 ```
 
