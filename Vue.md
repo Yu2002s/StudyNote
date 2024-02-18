@@ -839,6 +839,13 @@ export const trigger = (target, key) => {
     const name = computed(() => {
         return firstName.value + lastName.value
     })
+    
+    const num2 = computed(() => {
+    // 返回函数可以接收到计算属性的参数
+    return function(num: number) {
+      return num.toFixed(2)
+    }
+})
 </script>
 ```
 
