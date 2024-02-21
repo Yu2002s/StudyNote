@@ -223,6 +223,190 @@ Cache-Control：指示客户端应如何缓存，例如max-age=300表示可以�
 
 ### MyBatis
 
+#### 配置文件
+
+application.yml
+
+```yml
+server:
+  port: 80 # 端口
+spring:
+  boot:
+    admin:
+      client:
+        url: http://localhost:8080 # 要注册的server端的地址，如果为多个用,隔开
+  datasource: # 配置数据源信息
+    driver-class-name: com.mysql.cj.jdbc.Driver # 驱动
+    url: jdbc:mysql://localhost:3306/db1?serverTimezone=UTC # url
+    username: root # 用户名
+    password: jdy200255 # 密码
+mybatis: # mybatis配置
+  mapper-locations: classpath:mappers/*xml #xml路径，Mapper文件映射
+  type-aliases-package: com.example.domain # 别名
+mybatis-plus: # mybatis-plus配置信息
+  type-aliases-package: com.example.domain # 包别名
+  global-config: # 全局配置
+    db-config: # 数据库配置
+      id-type: auto # id类型
+  configuration: 
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl #日志实现
+    
+ management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+```
+
+##### 支持分页功能
+
+配置Bean
+
+```java
+package com.example.config;
+
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MpConfig {
+
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor mybatisPlusInterceptor = new MybatisPlusInterceptor();
+        mybatisPlusInterceptor.addInnerInterceptor(new PaginationInnerInterceptor());
+        return mybatisPlusInterceptor;
+    }
+
+}
+```
+
+具体实现
+
+```java
+package com.example.service;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.domain.Book;
+
+public interface IBookService extends IService<Book>  {
+
+    IPage<Book> getPage(int currentPage, int pageSize);
+
+}
+
+
+package com.example.service.impl;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.domain.Book;
+import com.example.mapper.BookMapper;
+import com.example.service.IBookService;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+
+@Service
+public class BookServiceImpl2 extends ServiceImpl<BookMapper, Book> implements IBookService {
+
+    @Resource
+    private BookMapper bookMapper;
+
+    @Override
+    public IPage<Book> getPage(int currentPage, int pageSize) {
+        // selectPage方法实现分页效果
+        return bookMapper.selectPage(new Page<>(currentPage, pageSize), null);
+    }
+}
+```
+
+#### Dao
+
+数据层
+
+```java
+@Mapper
+public interface BookDao {
+
+    // 插入数据
+    @Insert("insert into book (type, name, description) values (#{type}, #{name}, #{description})")
+    void save(Book book);
+
+    // 更新数据
+    @Update("update book set type = #{type}, name = #{name}, description = #{description} where id = #{id}")
+    void update(Book book);
+
+    // 删除数据
+    @Delete("delete from book where id = #{id}")
+    void delete(Integer id);
+
+    // 查询数据
+    @Select("select * from book where id = #{id}")
+    Book getById(Integer id);
+
+    @Select("select * from book")
+    List<Book> getAll();
+
+}
+```
+
+业务层
+
+```java
+@RestController
+@RequestMapping("/books")
+public class BookController {
+
+    @Autowired
+    private BookService bookService;
+
+    @PostMapping
+    public Result save(@RequestBody Book book) {
+        boolean flag = bookService.save(book);
+        return new Result(flag ? Code.SAVE_OK : Code.SAVE_ERR, flag);
+    }
+
+    @PutMapping
+    public Result update(@RequestBody Book book) {
+        boolean flag = bookService.update(book);
+        return new Result(flag ? Code.UPDATE_OK : Code.UPDATE_ERR, flag);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result delete(@PathVariable Integer id) {
+        boolean flag = bookService.delete(id);
+        return new Result(flag ? Code.DELETE_OK : Code.DELETE_ERR, flag);
+    }
+
+    @GetMapping("/{id}")
+    public Result getById(@PathVariable Integer id) {
+        // int i = 1 / 0;
+
+        Book book = bookService.getById(id);
+        Integer code = book != null ? Code.GET_OK : Code.GET_ERR;
+        String msg = book != null ? "查询成功" : "数据查询失败";
+        return new Result(code, book, msg);
+    }
+
+    @GetMapping
+    public Result getAll() {
+        List<Book> bookList = bookService.getAll();
+        Integer code = bookList != null ? Code.GET_OK : Code.GET_ERR;
+        String msg = bookList != null ? "查询成功" : "数据查询失败";
+        return new Result(code, bookList, msg);
+    }
+
+}
+```
+
 ### Tomcat
 
 官方网站：https://tomcat.apache.org/
@@ -256,7 +440,357 @@ java.util.logging.ConsoleHandler.encodeing = GBK # 将UTF-8改为GBK
 <Connector port="xxx" .../>
 ```
 
-### SpringBoot
+## SpringBoot
+
+#### 配置
+
+application.yml
+
+```yml
+server:
+	port: 80 #配置服务端口
+```
+
+```yml
+name: 123 # 配置name属性
+
+# 数组格式
+likes:
+  - name
+  - age
+# map
+users:
+  -
+    name: zhansan
+    age: 14
+  -
+    name: lisi
+    age: 15
+
+baseDir: C:\windows
+
+# 使用 ${属性名}的方式引用数据
+tempDir: "${baseDir}\temp"
+
+# 配置数据库信息
+datasource:
+  username: root
+  password: 1234
+  url: jdbc:mysql://localhost:3306
+```
+
+读取配置文件
+
+```java
+package com.example.pojo;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+/**
+ *  封装yml文件中的数据
+ */
+@Component // 声明bean注解，加入ioc容器中，如果使用@EnableConfigurationProperties注解则无需此注解
+// 配置读取配置文件的前缀
+@ConfigurationProperties(prefix = "datasource")
+public class MyDataSource {
+
+    // 与配置文件中的属性名相对应
+    private String username;
+    private String password;
+    private String url;
+
+    @Override
+    public String toString() {
+        return "MyDataSource{" +
+                "username='" + username + '\'' +
+                ", password='" + password + '\'' +
+                ", url='" + url + '\'' +
+                '}';
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+}
+```
+
+开启配置
+
+```java
+@EnableConfigurationProperties(XXX.class)
+public class SpringbootWebQuickstartApplication {}
+```
+
+在其他位置读取配置文件
+
+```java
+@RestController
+@RequestMapping("/books")
+public class BookController {
+
+    // @Value获取
+    /*@Value("${lesson}")
+    private String lesson;
+
+	// 获取数组中的第一个
+    @Value("${enterprise.subject[0]}")
+    private String subject;
+
+	// 使用此对象获取配置
+    @Autowired
+    private Environment environment;
+
+	// 直接使用配置对象
+    @Autowired
+    private Enterprise enterprise;*/
+
+    @GetMapping("/{id}")
+    public String getById(@PathVariable Integer id) {
+        /*System.out.println(subject);
+        // 获取到对应的属性
+        System.out.println(environment.getProperty("lesson"));
+        System.out.println(enterprise);*/
+        return String.valueOf(id);
+    }
+}
+```
+
+##### 参数校验
+
+application.yml
+
+```yml
+servers:
+  ipAddress: 192.168.0.1
+  port: 8888
+  timeout: 1000
+  serverTimeout: 3
+  dataSize: 10GB
+datasource:
+  driverClassName: com.mysql.driver
+  password: 0127
+
+spring:
+  datasource:
+    hikari:
+      username: root
+      jdbc-url: jdbc:mysql://localhost:3306/db1?useSSL=false
+#    tomcat:
+#      username: root
+#      max-active: 1000
+```
+
+添加依赖
+
+```xml
+<!-- 生成配置文件元数据 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-configuration-processor</artifactId>
+        <optional>true</optional>
+    </dependency>
+    <!-- 校验器 -->
+    <dependency>
+        <groupId>org.hibernate.validator</groupId>
+        <artifactId>hibernate-validator</artifactId>
+    </dependency>
+    <!-- 数据校验 -->
+    <!--<dependency>
+        <groupId>javax.validation</groupId>
+        <artifactId>validation-api</artifactId>
+    </dependency>-->
+```
+
+实体类
+
+```java
+package com.example.config;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.convert.DurationUnit;
+import org.springframework.util.unit.DataSize;
+import org.springframework.validation.annotation.Validated;
+
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+
+// @Component // 声明bean注解，加入ioc容器中，如果使用@EnableConfigurationProperties注解则无需此注解
+@Data // lombok
+@ConfigurationProperties(prefix = "servers")
+// 2.开启当前bean的数据校验
+@Validated
+public class ServerConfig {
+
+    private String ipAddress;
+    @Max(value = 8888, message = "最大值不能超过8888")
+    @Min(value = 222, message = "最小值不能小于222")
+    private int port;
+    private long timeout;
+
+    @DurationUnit(ChronoUnit.HOURS)
+    private Duration serverTimeOut;
+
+    //    @DataSizeUnit(DataUnit.KILOBYTES)
+    private DataSize dataSize;
+
+}
+```
+
+注入到bean中，配置文件中的数据将自动设置到bean中
+
+```java
+@Bean
+@ConfigurationProperties(prefix = "datasource")
+public DruidDataSource druidDataSource() {
+    DruidDataSource druidDataSource = new DruidDataSource();
+    // druidDataSource.setDriverClassName("com.mysql.jdbc.Driver");
+    return druidDataSource;
+}
+```
+
+##### 在测试环境中
+
+```yml
+# application.yml
+# test:
+#  prop: testValue
+#
+testcase:
+  book:
+    id: ${random.int(0, 100)}
+```
+
+```java
+// @Configuration // 如果使用了导入的方式，则无需使用此注解
+public class MsgConfig {
+
+    @Bean
+    public String msg() {
+        return "bean msg";
+    }
+
+}
+```
+
+```java
+@SpringBootTest
+// 导入
+@Import(MsgConfig.class)
+
+public class ConfigurationTest {
+
+    @Resource
+    private String msg;
+
+    @Test
+    void test() {
+        System.out.println(msg);
+    }
+
+}
+```
+
+临时配置
+
+```java
+//临时的属性配置
+//@SpringBootTest(properties = {"test.prop=testValue1"})
+//@SpringBootTest(args = {"--test.prop=testValue2"})
+@SpringBootTest(properties = {"test.prop=testValue1"}, args = {"--test.prop=testValue2"})
+class Springboot4TestApplicationTests {
+
+    @Value("${test.prop}")
+    private String msg;
+
+    @Test
+    void contextLoads() {
+        System.out.println(msg);
+    }
+}
+```
+
+web环境模拟请求测试
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// 开启虚拟MVC调用
+@AutoConfigureMockMvc
+public class WebTest {
+
+    @Test
+    void test(@Autowired MockMvc mockMvc) throws Exception {
+        // 创建了一个虚拟的请求
+        MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.get("/books");
+        ResultActions resultActions = mockMvc.perform(builder);
+
+        // 定义本次调用的预期值
+        /*StatusResultMatchers status = MockMvcResultMatchers.status();
+        ResultMatcher ok = status.isOk();*/
+
+        // 验证响应体
+        /*ContentResultMatchers content = MockMvcResultMatchers.content();
+        // ResultMatcher string = content.string("springboot1");
+        ResultMatcher json = content.json(
+                "{\"id\": 1,\"name\": \"springboot1\", \"type\": \"spring\"}"
+        );*/
+
+        HeaderResultMatchers header = MockMvcResultMatchers.header();
+        ResultMatcher matcher = header.string("Content-Type", "application/json");
+
+        // 添加本次预计值与本次调用过程进行匹配
+        resultActions.andExpect(matcher);
+    }
+}
+```
+
+#### 环境配置
+
+根据配置文件application-xxx选择对应的环境
+
+```xml
+<!-- 配置环境 -->
+<profiles>
+    <profile>
+        <id>env_dev</id>
+        <properties>
+            <profile.active>dev</profile.active>
+        </properties>
+    </profile>
+    <profile>
+        <id>env_pro</id>
+        <properties>
+            <profile.active>pro</profile.active>
+        </properties>
+        <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+    </profile>
+</profiles>
+```
 
 #### @RestController
 
@@ -272,9 +806,15 @@ java.util.logging.ConsoleHandler.encodeing = GBK # 将UTF-8改为GBK
 
 #### @RequestMapping
 
+请求映射
+
 #### @GetMapping
 
+GET映射
+
 #### @PostMapping
+
+POST映射
 
 ##### 接收普通参数
 
@@ -584,3 +1124,1112 @@ private EmpDao empDao;
 private EmpDao empDao;
 ```
 
+### Bean加载
+
+#### @Bean
+
+```java
+// 默认将加载
+@Bean
+public Cat tom() {
+ 	return new Cat();
+}
+```
+
+#### @ConditionalOnClass
+
+@ConditionalOnClass(Mouse.class) 当容器中有Mouse这个bean才会加载
+
+```java
+@Bean
+@ConditionalOnClass(Mouse.class)
+public Cat tom() {
+    return new Cat();
+}
+```
+
+#### @ConditionalOnMissingClass
+
+当容器中没有某个类时才会加载
+
+具体使用
+
+```java
+@Bean
+@ConditionalOnClass(name = "com.mysql.cj.jdbc.Driver")
+public DruidDataSource druidDataSource() {
+    return new DruidDataSource();
+}
+```
+
+#### @Configuration
+
+配置项，集中对Bean进行配置，此注解包含@Component注解
+
+```java
+// 配置此注解将注入到容器中，无需import
+@Configuration // 也可使用import或@Component注解注入
+public class DBConfig {
+
+    // 配置Bean
+    @Bean
+    public DruidDataSource druidDataSource() {
+        return new DruidDataSource();
+    }
+}
+```
+
+#### 动态加载
+
+动态加载配置项
+
+```java
+ApplicationContext ctx = new AnnotationConfigApplicationContext(SpringConfig.class);
+String[] names = ctx.getBeanDefinitionNames();
+for (String name : names) {
+    System.out.println("name = " + name);
+}
+System.out.println(ctx.getBean("dog"));
+```
+
+#### @ComponentScan
+
+组件扫描
+
+```java
+@ComponentScan({"com.example.adminclient.bean"})
+public class SpringConfig {}
+```
+
+#### @Import
+
+@import(xxxx.class) 导入指定类到容器中
+
+```java
+@Import({Dog.class, DbConfig.class})
+public class SpringConfig4 {}
+```
+
+#### ImportSelector
+
+定义选择器
+
+```java
+public class MyImportSelector implements ImportSelector {
+    @Override
+    public String[] selectImports(AnnotationMetadata metadata) {
+        String className = metadata.getClassName();
+        System.out.println("className = " + className);
+        boolean hasAnnotation = metadata.hasAnnotation("org.springframework.context.annotation.Configuration");
+        System.out.println("hasAnnotation = " + hasAnnotation);
+        // 返回指定的类路径
+        return new String[]{"com.itheima.bean.Dog", "com.itheima.bean.Cat"};
+    }
+}
+
+```
+
+导入到容器中
+
+```java
+@Configuration
+@Import({MyImportSelector.class})
+public class SpringConfig6 {}
+```
+
+#### ImportBeanDefinitionRegistrar
+
+注册Bean
+
+```java
+public class MyRegistrar implements ImportBeanDefinitionRegistrar {
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+        BeanDefinition beanDefinition = BeanDefinitionBuilder.rootBeanDefinition(BookServiceImpl2.class).getBeanDefinition();
+        registry.registerBeanDefinition("bookService", beanDefinition);
+    }
+}
+```
+
+导入
+
+```java
+@Configuration
+@Import({MyRegistrar.class})
+public class SpringConfig7 {}
+```
+
+#### PostProcessor
+
+```java
+public class MyPostProcessor implements BeanDefinitionRegistryPostProcessor {
+
+    @Override
+    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry beanDefinitionRegistry) throws BeansException {
+        BeanDefinition beanDefinition = BeanDefinitionBuilder.rootBeanDefinition(BookServiceImpl4.class).getBeanDefinition();
+        beanDefinitionRegistry.registerBeanDefinition("bookService", beanDefinition);
+    }
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory configurableListableBeanFactory) throws BeansException {
+
+    }
+}
+```
+
+#### @ImportResource
+
+加载配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <!-- Xml申明自己开发的Bean -->
+    <bean id="cat" class="com.itheima.bean.Cat"/>
+    <bean class="com.itheima.bean.Dog"/>
+
+    <!-- 申明第三方bean -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"/>
+</beans>
+```
+
+#### Bean 生命周期
+
+```java
+// 自定义初始化
+@PostConstruct
+public void springPostConstruct(){
+    System.out.println("@PostConstruct");
+}
+
+// 自定义销毁
+@PreDestroy
+public void springPreDestory(){
+    System.out.println("@PreDestory");
+}
+```
+
+##### BeanNameAware
+
+```java
+public class Book implements BeanNameAware {
+    public void setBeanName(String name) {
+    	System.out.println("Book.setBeanName invoke");
+    }
+}
+```
+
+#### BeanFactoryAware
+
+```java
+public class Book implements BeanNameAware {
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+        System.out.println("Book.setBeanFactory invoke");
+    }
+}
+```
+
+#### InitializingBean
+
+#### 加载Bean
+
+```java
+//@Component // 如果声明此注解，则无需使用@import进行导入
+@Data
+@EnableConfigurationProperties(CartoonProperties.class)
+// 实现 ApplicationContextAware 接口，可以获取到applicationContext
+public class CartoonCatAndMouse implements ApplicationContextAware {
+
+    private Cat cat;
+
+    private Mouse mouse;
+
+    // 配置文件，这里使用构造器方法进行引入
+    private CartoonProperties cartoonProperties;
+
+    public CartoonCatAndMouse(CartoonProperties cartoonProperties) {
+        this.cartoonProperties = cartoonProperties;
+        cat = new Cat();
+        cat.setName(StringUtils.hasText(cartoonProperties.getCat().getName()) ? cartoonProperties.getCat().getName():  "Tom");
+        cat.setAge(3);
+        mouse = new Mouse();
+        mouse.setAge(4);
+        mouse.setName("Jerry");
+    }
+
+    public void play() {
+        String[] names = applicationContext.getBeanDefinitionNames();
+        for (String name : names) {
+            System.out.println("name = " + name);
+        }
+        System.out.println(cat.getAge() + "岁的" + cat.getName() + "和"
+                + mouse.getAge() + "岁的" + mouse.getName() + "打起来了");
+    }
+
+    private ApplicationContext applicationContext;
+
+    // 重写此方法以获取到ApplicationContext
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
+}
+```
+
+导入到容器中
+
+```java
+@SpringBootApplication
+// 对上面的配置进行导入到容器中
+@Import(CartoonCatAndMouse.class)
+public class App {
+    public static void main(String[] args) {
+        ConfigurableApplicationContext context = SpringApplication.run(App.class, args);
+        // 获取到容器中指定的bean
+        CartoonCatAndMouse bean = context.getBean(CartoonCatAndMouse.class);
+        // 调用bean的方法
+        bean.play();
+        System.out.println("bean = " + bean);
+    }
+}
+```
+
+### 异常处理
+
+异常处理类
+
+```java
+public class SystemException extends RuntimeException {
+
+    private Integer code;
+
+    public Integer getCode() {
+        return code;
+    }
+
+    public void setCode(Integer code) {
+        this.code = code;
+    }
+
+    public SystemException(Integer code, String message) {
+        super(message);
+        this.code = code;
+    }
+
+    public SystemException(Integer code, String message, Throwable cause) {
+        super(message, cause);
+        this.code = code;
+    }
+}
+```
+
+具体实现
+
+```java
+/**
+ *  异常处理类
+ */
+ @RestControllerAdvice
+public class ProjectExceptionAdvice {
+
+     // 处理系统异常
+    @ExceptionHandler(SystemException.class)
+    public Result doSystemException(SystemException e) {
+        // 记录日志
+        // 发送信息给运维
+        // 发送邮件给开发人员
+        return new Result(e.getCode(),  e.getMessage());
+    }
+
+    // 处理业务异常
+    @ExceptionHandler(BusinessException.class)
+    public Result doBusinessException(BusinessException e) {
+        return new Result(e.getCode(),  e.getMessage());
+    }
+
+    // 拦截其他异常
+    @ExceptionHandler(Exception.class)
+    public Result doException(Exception exception) {
+        return new Result(Code.SYSTEM_UNKNOW_ERR,  "嘿嘿出异常了");
+    }
+}
+```
+
+### 日志
+
+导入坐标 lombok
+
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+</dependency>
+```
+
+获取日志对象
+
+```java
+// 创建日志记录对象
+private static final Logger log = LoggerFactory.getLogger(BookController.class);
+```
+
+lombok注解获取
+
+```java
+@Slf4j
+@RestController
+@RequestMapping("/books")
+public class BookController {}
+```
+
+具体使用
+
+```java
+@GetMapping
+public String getById() {
+    System.out.println("springboot is running...");
+
+    log.debug("debug...");
+    log.info("info...");
+    log.warn("warn...");
+    log.error("error...");
+
+    return "springboot is running...";
+}
+```
+
+配置文件application.properties
+
+```properties
+# 应用名称
+spring.application.name=springboot-1-log
+# 应用服务 WEB 访问端口
+server.port=8080
+
+# 开启调试
+# debug=true
+
+# 设置日志级别
+logging.level.root=info
+# 设置某个包的日志级别
+# logging.level.com.example.controller=debug
+
+# 设置分组对某个组设置日志级别
+# 设置分组
+logging.group.ebank=com.example.controller,com.example.service
+logging.group.iservice=com.example
+
+# 设置对应分组的日志级别
+logging.level.ebank=debug
+
+# 控制台输出格式
+# logging.pattern.console=%d - %m %n
+# %d 日期
+# %m 输出信息
+# %n 换行
+# logging.pattern.console=%d %clr(%5p) %n
+# %p 日志级别
+# clr 彩色显示
+#logging.pattern.console=%d %clr(%5p) --- [%16t] %n
+# %t 线程名
+#logging.pattern.console=%d %clr(%5p) --- [%16t] %40c %n
+# %c 类名
+#logging.pattern.console=%d %clr(%5p) --- [%16t] %clr(%-40.40c){cyan} : %m %n
+
+# 日志文件名
+logging.file.name=server.log
+
+# 日志最大存储大小
+logging.logback.rollingpolicy.max-file-size=4KB
+# 日志命名规范
+logging.logback.rollingpolicy.file-name-pattern=server.%d{yyyy-MM-dd}.%i.log
+```
+
+### 热部署
+
+导入坐标
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-devtools</artifactId>
+</dependency>
+```
+
+打开Idea设置，找到Compiler，勾选Build project automatically和compile independent module
+
+按ctrl + shift + alt + /，点击registry，勾选compiler.automake.allow.when.app.running
+
+修改启动设置，把on update action he on frame deactivation 都设置为"update classes and resources"
+
+关闭热部署
+
+```java
+public static void main(String[] args) {
+   	System.setProperty("spring.devtools.restart.enabled", "false");
+    SpringApplication.run(Application.class, args);
+}
+```
+
+### Redis
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>redis.clients</groupId>
+    <artifactId>jedis</artifactId>
+</dependency>
+```
+
+配置
+
+```yml
+spring:
+  redis:
+    client-type: lettuce # 客户端类型
+    lettuce:
+      pool:
+        max-active: 16
+    jedis:
+      pool:
+        max-active: 16
+```
+
+使用
+
+```java
+@Autowired
+private RedisTemplate redisTemplate;
+
+@Test
+void contextLoads() {
+}
+
+@Test
+void set() {
+    ValueOperations ops = redisTemplate.opsForValue();
+    ops.set("age", 41);
+}
+
+@Test
+void get() {
+    ValueOperations ops = redisTemplate.opsForValue();
+    Object age = ops.get("name");
+    System.out.println("name = " + age);
+}
+@Test
+void hSet() {
+    HashOperations ops = redisTemplate.opsForHash();
+    ops.put("info", "a", "aa");
+}
+
+@Test
+void hGet() {
+    HashOperations ops = redisTemplate.opsForHash();
+    Object a = ops.get("info", "a");
+    System.out.println("a = " + a);
+}
+```
+
+StringRedisTemplate
+
+```java
+@Autowired
+private StringRedisTemplate stringRedisTemplate;
+
+@Test
+void get() {
+    ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
+    String name = ops.get("name");
+    System.out.println("name = " + name);
+}
+```
+
+### Mongodb
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-mongodb</artifactId>
+</dependency>
+```
+
+配置
+
+```yml
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost/itheima
+```
+
+使用
+
+```java
+@Autowired
+private MongoTemplate mongoTemplate;
+
+@Test
+void contextLoads() {
+    Book book = new Book();
+    book.setId(2);
+    book.setName("springboot2");
+    book.setType("springboot2");
+    book.setDescription("springboot2");
+    mongoTemplate.save(book);
+}
+
+@Test
+void find() {
+    List<Book> books = mongoTemplate.findAll(Book.class);
+    System.out.println("books = " + books);
+}
+```
+
+### Elasticsearch
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.elasticsearch.client</groupId>
+    <artifactId>elasticsearch-rest-high-level-client</artifactId>
+</dependency>
+```
+
+使用
+
+```java
+@Autowired
+private BookDao bookDao;
+
+/*@Autowired
+private ElasticsearchRestTemplate restTemplate;*/
+
+@Autowired
+private RestHighLevelClient restHighLevelClient;
+
+@BeforeEach
+void setUp() {
+    /*HttpHost host = HttpHost.create("http://localhost:9200");
+    RestClientBuilder builder = RestClient.builder(host);
+    restHighLevelClient = new RestHighLevelClient(builder);*/
+}
+
+@AfterEach
+void tearDown() throws IOException {
+    restHighLevelClient.close();
+}
+
+@Test
+void contextLoads() throws IOException {
+
+    /*Book book = bookDao.selectById(3);
+    System.out.println("book = " + book);*/
+
+    IndicesClient indices = restHighLevelClient.indices();
+    CreateIndexRequest request = new CreateIndexRequest("books");
+    // 设置请求中的参数
+    String json = "{\n" +
+            "    \"mappings\": {\n" +
+            "        \"properties\": {\n" +
+            "            \"id\": {\n" +
+            "                \"type\": \"keyword\"\n" +
+            "            },\n" +
+            "            \"name\": {\n" +
+            "                \"type\": \"text\",\n" +
+            "                \"analyzer\": \"ik_max_word\",\n" +
+            "                \"copy_to\": \"all\"\n" +
+            "            },\n" +
+            "            \"type\": {\n" +
+            "                \"type\": \"keyword\"\n" +
+            "            },\n" +
+            "            \"description\": {\n" +
+            "                \"type\": \"text\",\n" +
+            "                \"analyzer\": \"ik_max_word\",\n" +
+            "                \"copy_to\": \"all\"\n" +
+            "            },\n" +
+            "            \"all\": {\n" +
+            "                \"type\": \"text\",\n" +
+            "                \"analyzer\": \"ik_max_word\"\n" +
+            "            }\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+    request.source(json, XContentType.JSON);
+    indices.create(request, RequestOptions.DEFAULT);
+}
+
+@Test
+void testCreateDoc() throws IOException {
+    Book book = bookDao.selectById(3);
+    IndexRequest request = new IndexRequest("books").id(String.valueOf(book.getId()));
+    String json = JSON.toJSONString(book);
+    request.source(json, XContentType.JSON);
+    restHighLevelClient.index(request, RequestOptions.DEFAULT);
+}
+
+/**
+ * 批处理
+ * @throws IOException
+ */
+@Test
+void testCreateAllDoc() throws IOException {
+    List<Book> bookList = bookDao.selectList(null);
+    /*IndexRequest request = new IndexRequest("books").id(String.valueOf(book.getId()));
+    String json = JSON.toJSONString(book);
+    request.source(json, XContentType.JSON);
+    restHighLevelClient.index(request, RequestOptions.DEFAULT);*/
+
+    BulkRequest bulkRequest = new BulkRequest();
+
+    for (Book book : bookList) {
+        IndexRequest request = new IndexRequest("books").id(String.valueOf(book.getId()));
+        String json = JSON.toJSONString(book);
+        request.source(json, XContentType.JSON);
+        bulkRequest.add(request);
+    }
+
+    restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+}
+
+@Test
+void testGet() throws IOException {
+    GetRequest request = new GetRequest("books", "3");
+    GetResponse response = restHighLevelClient.get(request, RequestOptions.DEFAULT);
+
+    String source = response.getSourceAsString();
+    System.out.println("source = " + source);
+}
+
+@Test
+void testSearch() throws IOException {
+    SearchRequest request = new SearchRequest("books");
+    SearchSourceBuilder builder = new SearchSourceBuilder();
+    builder.query(QueryBuilders.termQuery("name", "spring"));
+    request.source(builder);
+    SearchResponse response = restHighLevelClient.search(request, RequestOptions.DEFAULT);
+    SearchHits hits = response.getHits();
+    for (SearchHit hit : hits) {
+        String source = hit.getSourceAsString();
+        // System.out.println("source = " + source);
+        Book book = JSON.parseObject(source, Book.class);
+        System.out.println("book = " + book);
+    }
+}
+```
+
+### 缓存
+
+开启缓存
+
+```java
+@SpringBootApplication
+// 开启缓存
+@EnableCaching
+public class Application {}
+```
+
+#### Memcached
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.googlecode.xmemcached</groupId>
+    <artifactId>xmemcached</artifactId>
+    <version>2.4.7</version>
+</dependency>
+```
+
+配置
+
+```yml
+memcached:
+  servers: localhost:11211
+  poolSize: 10
+  opTimeOut: 3000
+```
+
+使用
+
+```java
+@Service
+public class SMSCodeServiceImpl implements SMSCodeService {
+
+    @Autowired
+    private CodeUtils codeUtils;
+
+    @Autowired
+    private MemcachedClient memcachedClient;
+
+    /*
+        Xmemcached
+     */
+    @Override
+    public String sendCodeToSMS(String tel) {
+        String code = codeUtils.generator2(tel);
+        try {
+            // exp 超时时间。单位s
+            memcachedClient.set(tel, 10, code);
+        } catch (TimeoutException | InterruptedException | MemcachedException e) {
+            e.printStackTrace();
+        }
+        return code;
+    }
+
+    @Override
+    public boolean checkCode(SMSCode smsCode) {
+        String code = null;
+        try {
+            code = memcachedClient.get(smsCode.getTel());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return smsCode.getCode().equals(code);
+    }
+}
+```
+
+实体类
+
+```java
+@Data
+public class SMSCode {
+
+    private String tel;
+    private String code;
+
+}
+```
+
+#### Redis
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+配置
+
+```yml
+#  cache:
+#    type: redis
+#    redis:
+#      use-key-prefix: true
+#      cache-null-values: false
+#      key-prefix: aa
+#      time-to-live: 10s
+#  redis:
+#    host: localhost
+#    port: 6379
+```
+
+具体实现同上
+
+#### Ehcache
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+<dependency>
+    <groupId>net.sf.ehcache</groupId>
+    <artifactId>ehcache</artifactId>
+</dependency>
+```
+
+配置
+
+```yml
+#ehcache配置
+#  cache:
+#    type: ehcache
+#    ehcache:
+#      config: ehcache.xml
+```
+
+ehcache.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         updateCheck="false">
+    <diskStore path="D:\ehcache" />
+
+    <!--默认缓存策略 -->
+    <!-- external：是否永久存在，设置为true则不会被清除，此时与timeout冲突，通常设置为false-->
+    <!-- diskPersistent：是否启用磁盘持久化-->
+    <!-- maxElementsInMemory：最大缓存数量-->
+    <!-- overflowToDisk：超过最大缓存数量是否持久化到磁盘-->
+    <!-- timeToIdleSeconds：最大不活动间隔，设置过长缓存容易溢出，设置过短无效果，可用于记录时效性数据，例如验证码-->
+    <!-- timeToLiveSeconds：最大存活时间-->
+    <!-- memoryStoreEvictionPolicy：缓存清除策略-->
+    <defaultCache
+        eternal="false"
+        diskPersistent="false"
+        maxElementsInMemory="1000"
+        overflowToDisk="false"
+        timeToIdleSeconds="10"
+        timeToLiveSeconds="10"
+        memoryStoreEvictionPolicy="LRU" />
+
+    <cache
+        name="smsCode"
+        eternal="false"
+        diskPersistent="false"
+        maxElementsInMemory="1000"
+        overflowToDisk="false"
+        timeToIdleSeconds="10"
+        timeToLiveSeconds="10"
+        memoryStoreEvictionPolicy="LRU" />
+
+</ehcache>
+```
+
+具体实现同上
+
+### 定时任务
+
+开启定时任务
+
+```java
+@SpringBootApplication
+@EnableScheduling // 开始定时任务
+public class Springboot12TaskApplication {}
+```
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-quartz</artifactId>
+</dependency>
+```
+
+配置
+
+```yml
+spring:
+  task:
+    scheduling:
+      thread-name-prefix: spring_ # 线程前缀
+```
+
+任务配置
+
+```java
+@Configuration
+public class QuartzConfig {
+
+    @Bean
+    public JobDetail jobDetail() {
+        // 绑定具体的工作
+        return JobBuilder.newJob(MyQuartz.class)
+                .storeDurably()
+                .build();
+    }
+
+    @Bean
+    public Trigger trigger() {
+        // 绑定具体的工作明细
+        ScheduleBuilder<? extends Trigger> schedBuilder = CronScheduleBuilder
+                .cronSchedule("0/5 * * * * ?");
+        return TriggerBuilder.newTrigger()
+                .forJob(jobDetail())
+                .withSchedule(schedBuilder)
+                .build();
+    }
+}
+```
+
+springboot提供的定时任务功能
+
+```java
+@Component
+public class MyBean {
+
+    @Scheduled(cron = "0/1 * * * * ?")
+    public void print() {
+        System.out.println(Thread.currentThread().getName() + "print...");
+    }
+
+}
+```
+
+### Mail(邮件)
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+```
+
+配置
+
+```yaml
+spring:
+  mail:
+    username: 2475058223@qq.com
+    password: awxesgjpwgikdjjc
+    port: 587
+    host: smtp.qq.com
+```
+
+具体实现
+
+```java
+@Service
+public class SendMailServiceImpl implements SendMailService {
+
+    @Autowired
+    private JavaMailSender javaMailSender;
+    private String from = "2475058223@qq.com";
+    private String to = "jiangdongyu18@163.com";
+    private String subject = "测试邮件";
+
+    private String content = "<img src='https://img1.baidu.com/it/u=2192429849,3208186763&fm=253&fmt=auto&app=138&f=JPEG?w=701&h=500'><a href=\"https://www.itcast.cn\">点开有惊喜</a>";
+
+    @Override
+    public void sendMail() {
+       /* SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from + "(小甜甜)");
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(content);*/
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(message, true);
+            mimeMessageHelper.setFrom(from + "(小甜甜)");
+            mimeMessageHelper.setTo(to);
+            mimeMessageHelper.setSubject(subject);
+            mimeMessageHelper.setText(content, true);
+            // 如何添加附件
+            File file = new File("D:\\jdy2002\\Idea\\SpringBoot2-Plus\\springboot-13-mail\\target\\springboot-13-mail-0.0.1-SNAPSHOT.jar");
+            mimeMessageHelper.addAttachment(file.getName(), file);
+            javaMailSender.send(message);
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        }
+
+    }
+}
+```
+
+### Admin
+
+#### server
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-server</artifactId>
+    <version>3.2.1</version>
+</dependency>
+```
+
+开启服务
+
+```java
+@EnableAdminServer
+public class SpringbootWebQuickstartApplication {}
+```
+
+配置项
+
+```java
+@Component
+public class HealthConfig extends AbstractHealthIndicator {
+
+
+    // 显示运行时间
+    @Override
+    protected void doHealthCheck(Health.Builder builder) throws Exception {
+        builder.withDetail("runTime", System.currentTimeMillis())
+                .up();
+    }
+}
+```
+
+```java
+@Component
+@Endpoint(id = "pay")
+public class PayEndpoint {
+
+    @ReadOperation
+    public Object getPay() {
+        System.out.println("===================");
+        return "123";
+    }
+
+}
+```
+
+#### 客户端
+
+添加依赖
+
+```xml
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-client</artifactId>
+    <version>3.2.2</version>
+</dependency>
+```
+
+配置
+
+```yaml
+server:
+  port: 80
+
+spring:
+  boot:
+    admin:
+      client:
+        url: http://localhost:8080 # 客户端地址
+management:
+  endpoint:
+    health:
+      show-details: always
+    info:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+    enabled-by-default: true
+info:
+  author: itheima
+  appName: @project.artifactId@
+```
+
+访问http://localhhost:8080即可
