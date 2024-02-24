@@ -158,7 +158,7 @@ public static void main(String[] args) {
 | s      | Second in minute    | 55       |
 
 ### 内置接口
-#### consumer
+#### Consumer
 ```java
 Consumer<String> consumer = System.out::println;
 consumer.accept("hello world");
@@ -896,5 +896,103 @@ try {
 } catch (Exception e) {
     e.printStackTrace();
 }
+```
+
+### 枚举
+
+枚举解决if多的问题
+
+#### 解决办法1
+
+定义统一的接口
+
+```java
+interface PayEnum {
+    void pay();
+}
+```
+
+创建实现类，实现具体业务
+
+```java
+private static class WeChatPay implements PayEnum {
+    @Override
+    public void pay() {
+        System.out.println("WeChat Pay");
+    }
+}
+
+private static class AliPay implements PayEnum {
+    @Override
+    public void pay() {
+        System.out.println("AliPay");
+    }
+}
+```
+
+创建枚举对象
+
+```java
+private enum PayTypeEnum {
+    PAY_WECHAT("1", new WeChatPay()),
+    PAY_ALI("2", new AliPay());
+
+    private final String payType;
+
+    private final PayEnum payEnum;
+
+    PayTypeEnum(String payType, PayEnum payEnum) {
+        this.payType = payType;
+        this.payEnum = payEnum;
+    }
+
+    public static PayEnum getPay(String payType) {
+        for (PayTypeEnum payTypeEnum: PayTypeEnum.values()) {
+            if (payTypeEnum.payType.equals(payType)) {
+                return payTypeEnum.payEnum;
+            }
+        }
+        // 默认
+        return new WeChatPay();
+    }
+}
+```
+
+实现
+
+```java
+PayEnum payEnum = PayTypeEnum.getPay("1");
+PayEnum payEnum2 = PayTypeEnum.getPay("2");
+payEnum.pay();
+payEnum2.pay();
+```
+
+#### 解决办法2
+
+适用于业务代码少的情况
+
+```java
+private enum PayTypeEnum implements PayEnum {
+    WECHAT_PAY {
+        @Override
+        public void pay() {
+            System.out.println("WeChat Pay");
+        }
+    },
+
+    ALI_PAY {
+        @Override
+        public void pay() {
+            System.out.println("Ali Pay");
+        }
+    }
+}
+```
+
+实现
+
+```java
+PayTypeEnum.valueOf("WECHAT_PAY").pay();
+PayTypeEnum.valueOf("ALI_PAY").pay();
 ```
 

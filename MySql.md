@@ -28,10 +28,16 @@ drop table table1; #删除表
 alter table student rename to stu; #修改表名
 alter table stu add address varchar(50); #添加列
 alter table stu modify address char(50); #修改列
-alter table stu change address addr varchar(30); #修改列和数据类型
+alter table stu change address addr 
+varchar(30); #修改列和数据类型
 alter table stu drop addr; #删除列
 
+## 添加
 INSERT INTO stu(id, name) VALUES(1,'张三'); #添加指定字段数据
+insert into stu values(1, '张三') # 添加数据
+insert into stu(id, name) values(1, '张三'),(2,'李四') # 批量添加指定字段数据
+insert into stu values(1, '张三'),(2, '李四') # 批量添加数据
+
 UPDATE stu set sex = '女' where name = '张三'; #更新指定列
 delete from stu where name = '张三'; #删除指定列
 

@@ -143,18 +143,18 @@ Maven坐标主要组成
 
 ```xml
 <dependencies>
-        <dependency>
-            <groupId>xyz.jdynb</groupId>
-            <artifactId>maven-project01</artifactId>
-            <version>1.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-    </dependencies>
+    <dependency>
+        <groupId>xyz.jdynb</groupId>
+        <artifactId>maven-project01</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <exclusions>
+            <exclusion>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+</dependencies>
 ```
 
 设置 exclusion 可以排除不需要的依赖
@@ -228,21 +228,23 @@ Cache-Control：指示客户端应如何缓存，例如max-age=300表示可以�
 application.yml
 
 ```yml
-server:
-  port: 80 # 端口
 spring:
-  boot:
-    admin:
-      client:
-        url: http://localhost:8080 # 要注册的server端的地址，如果为多个用,隔开
-  datasource: # 配置数据源信息
+  datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver # 驱动
-    url: jdbc:mysql://localhost:3306/db1?serverTimezone=UTC # url
-    username: root # 用户名
-    password: jdy200255 # 密码
-mybatis: # mybatis配置
-  mapper-locations: classpath:mappers/*xml #xml路径，Mapper文件映射
-  type-aliases-package: com.example.domain # 别名
+    url: jdbc:mysql://localhost:3306/db01?serverTimezone=UTC
+    username: root
+    password: jdy200255
+mybatis:
+  mapper-locations: classpath:mapper/*xml
+  type-aliases-package: com.example.mybatis.pojo
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+logging:
+  level:
+    root: info
+  config: classpath:logback.xml
+  file:
+    name: server.log
 mybatis-plus: # mybatis-plus配置信息
   type-aliases-package: com.example.domain # 包别名
   global-config: # 全局配置
@@ -250,16 +252,584 @@ mybatis-plus: # mybatis-plus配置信息
       id-type: auto # id类型
   configuration: 
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl #日志实现
-    
- management:
-  endpoint:
-    health:
-      show-details: always
-  endpoints:
-    web:
-      exposure:
-        include: '*'
 ```
+
+mybatis-config.xml(非必须)
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!-- 别名简化 -->
+    <typeAliases>
+        <package name="com.itheima.pojo"/>
+    </typeAliases>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <!-- 连接信息 -->
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="2002"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <!-- 加载sql映射文件 -->
+<!--        <mapper resource="com/itheima/mapper/UserMapper.xml"/>-->
+
+        <!-- Mapper代理方式 使用此方法映射，无需手动引入映射文件 -->
+        <package name="com.itheima.mapper"/>
+    </mappers>
+</configuration>
+```
+
+#### 导入依赖
+
+```xml
+<!-- MyBatis依赖 -->
+<!-- <dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.10</version>
+</dependency> -->
+
+<!-- mysql驱动 -->
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <scope>runtime</scope>
+</dependency>
+
+<!-- spring整合 -->
+<dependency>
+    <groupId>org.mybatis.spring.boot</groupId>
+    <artifactId>mybatis-spring-boot-starter</artifactId>
+    <version>3.0.3</version>
+</dependency>
+
+<!-- 用于记录日志 -->
+<!-- 添加slf4j日志api -->
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-api</artifactId>
+</dependency>
+<!-- 添加logback-classic依赖 -->
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+</dependency>
+```
+
+日志配置 logback.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+        CONSOLE ：表示当前的日志信息是可以输出到控制台的。
+    -->
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%level] %blue(%d{HH:mm:ss.SSS}) %cyan([%thread]) %boldGreen(%logger{15}) - %msg %n</pattern>
+        </encoder>
+    </appender>	
+
+    <logger name="com.xxx.xxx" level="DEBUG" additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <!--
+      level:用来设置打印级别，大小写无关：TRACE, DEBUG, INFO, WARN, ERROR, ALL 和 OFF
+     ， 默认debug
+      <root>可以包含零个或多个<appender-ref>元素，标识这个输出位置将会被本日志级别控制。
+      -->
+    <root level="DEBUG">
+        <appender-ref ref="Console"/>
+    </root>
+</configuration>
+```
+
+Mapper扫描
+
+```java
+@MapperScan(basePackages = "com.example.mybatis.mapper")
+public class MybatisApplication {}
+```
+
+#### Mapper
+
+resources/xxx.xxx.mapper目录和src/xxx.xxx.mapper相映射
+
+xxxMapper.xml
+
+```xml-dtd
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 命名空间 -->
+<mapper namespace="com.itheima.mapper.BrandMapper">
+
+    <sql id="brand_column">
+
+    </sql>
+
+    <!--
+        id: 唯一标识
+        type：映射的类型，支持别名
+    -->
+    <resultMap id="brandResultMap" type="brand">
+        <!--
+            id 完成主键字段的映射
+                column 表的别名
+                property 类的字段名
+            result 完成一般字段的映射
+        -->
+        <result column="brand_name" property="brandName"/>
+        <result column="company_name" property="companyName"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="brandResultMap">
+        select *
+        from tb_brand;
+    </select>
+
+    <select id="selectById" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        where id = #{id};
+    </select>
+    <!--<select id="selectByCondition" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        where status = #{status}
+        and company_name like #{companyName}
+        and brand_name like #{brandName}
+    </select>-->
+    <select id="selectByCondition" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="companyName != null and companyName != '' ">
+                and company_name like #{companyName}
+            </if>
+            <if test="brandName != null and brandName != '' ">
+                and brand_name like #{brandName}
+            </if>
+        </where>
+
+    </select>
+    <!--<select id="selectByConditionSingle" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        where
+        <choose>
+            <when test="status != null">
+                status = #{status}
+            </when>
+            <when test="companyName != null and companyName != '' ">
+                company_name like #{companyName}
+            </when>
+            <when test="brandName != null and brandName != '' ">
+                brand_name like #{brandName}
+            </when>
+            <otherwise>
+                1 = 1
+            </otherwise>
+        </choose>
+    </select>-->
+
+    <select id="selectByConditionSingle" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        <where>
+            <choose>
+                <when test="status != null">
+                    status = #{status}
+                </when>
+                <when test="companyName != null and companyName != '' ">
+                    company_name like #{companyName}
+                </when>
+                <when test="brandName != null and brandName != '' ">
+                    brand_name like #{brandName}
+                </when>
+            </choose>
+        </where>
+    </select>
+
+    <insert id="add" useGeneratedKeys="true" keyProperty="id">
+        insert into tb_brand (brand_name, company_name, ordered, description, status)
+        VALUES (#{brandName}, #{companyName}, #{ordered}, #{description}, #{status});
+    </insert>
+
+    <!--<update id="update">
+        update tb_brand
+        set brand_name = #{brandName},
+            company_name = #{companyName},
+            ordered = #{ordered},
+            description = #{description},
+            status = #{status}
+        where id = #{id};
+    </update>-->
+
+    <update id="update">
+        update tb_brand
+        <set>
+            <if test="brandName != null and brandName != '' ">
+                brand_name = #{brandName},
+            </if>
+            <if test="companyName != null and companyName != '' ">
+                company_name = #{companyName},
+            </if>
+            <if test="ordered != null">
+                ordered = #{ordered},
+            </if>
+            <if test="description != null and description != '' ">
+                description = #{description},
+            </if>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </set>
+        where id = #{id};
+    </update>
+
+    <delete id="deleteById">
+        delete
+        from tb_brand
+        where id = #{id};
+    </delete>
+
+    <delete id="deleteByIds">
+        delete
+        from tb_brand
+        where id
+        in
+        <foreach collection="ids" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+        ;
+    </delete>
+
+</mapper>
+```
+
+多表查询
+
+```xml-dtd
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mybatis.mapper.EmpMapper">
+
+    <!-- 结果映射 id：唯一标识，type：实体类类名，指定返回类型 -->
+    <resultMap id="empMap" type="emp">
+        <!--    
+			设置对应关系  column：数据库中的列，property: 实体类属性
+  			javaType：实体属性类型，jdbcType：数据库中的字段类型
+		-->
+        <result column="username" property="username" javaType="String" jdbcType="VARCHAR"/>
+        <!--
+ 			collection: 收集数据，select：指定需要调用的sql id，
+			调用selectSex查询数据，并将gender作为selectSex作为id参数进行传入
+		-->
+        <collection property="gender" javaType="string" column="id" select="selectSex"/>
+    </resultMap>
+
+    <!-- autoMapping: 自动映射（column和property相同时） -->
+    <resultMap id="orderMap" type="order" autoMapping="true">
+        <!--<id column="id" property="id"/>
+        <result column="uid" property="uid"/>
+        <result column="total" property="total"/>-->
+        <result column="create_at" property="createAt"/>
+        <!--<result column="username" property="user.username"/>-->
+        <!-- 关联数据，将关联表查询数据，关联给user属性（适用于1对1） -->
+        <association property="user" javaType="user" autoMapping="true">
+            <id column="uid" property="id"/>
+        </association>
+    </resultMap>
+
+    <resultMap id="userMap" type="user" autoMapping="true">
+        <!-- 收集关联表的数据，将查询到的集合指定ofType的类型，并赋值给（使用与1对多或多对多） -->
+        <collection property="orders" ofType="order" autoMapping="true">
+            <id column="oid" property="id"/>
+            <result column="create_at" property="createAt"/>
+        </collection>
+    </resultMap>
+
+    <!-- 启用继承extend -->
+    <resultMap id="userRoleMap" type="user" extends="userMap" autoMapping="true">
+        <collection property="roles" ofType="role" autoMapping="true">
+        </collection>
+    </resultMap>
+
+    <!-- parameterType 入参类型，指定resultMap 结果映射 -->
+    <select parameterType="int" id="selectById" resultMap="empMap">
+        select *
+        from tb_emp
+        where id = #{id}
+    </select>
+
+    <!-- resultType：返回结果类型 -->
+    <select id="selectSex" parameterType="int" resultType="string">
+        select name
+        from tb_sex
+        where id = #{id}
+    </select>
+
+    <select id="getOrders" resultMap="orderMap">
+        select *
+        from tb_order o,
+             tb_user u
+        where o.id = u.id
+    </select>
+
+    <select id="getUsers" resultMap="userMap">
+        select *, o.id oid
+        from tb_user
+                 left join tb_order o on tb_user.id = o.uid
+    </select>
+
+    <select id="getUsersAndRole" resultMap="userRoleMap">
+        /*select *
+        from tb_user u
+                 left join tb_order o on u.id = o.uid
+                 left join tb_user_role ur on ur.user_id = u.id
+                 inner join tb_role r on r.id = ur.role_id*/
+        select * from tb_user u, tb_user_role ur, tb_role r where u.id = ur.user_id and ur.role_id = r.id
+    </select>
+</mapper>
+```
+
+对应类xxxMapper.java
+
+```java
+public interface BrandMapper {
+
+    List<Brand> selectAll();
+
+    Brand selectById(int id);
+
+   /* List<Brand> selectByCondition(@Param("status") int status,
+                                  @Param("companyName") String companyName,
+                                  @Param("brandName") String brandName);*/
+
+   /* List<Brand> selectByCondition(Brand brand);*/
+
+    // Map参数
+    List<Brand> selectByCondition(Map<String, String> map);
+
+    // 对象参数
+    List<Brand> selectByConditionSingle(Brand brand);
+
+    void add(Brand brand);
+
+    int update(Brand brand);
+
+    void deleteById(int id);
+    // 数组参数
+    void deleteByIds(@Param("ids") int[] ids);
+}
+```
+
+> 安装插件 MyBatisX
+
+具体实现
+
+```java
+@Test
+public void testSelectAll() throws IOException {
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    List<Brand> brands = brandMapper.selectAll();
+    System.out.println("brands = " + brands);
+
+    sqlSession.close();
+
+}
+
+@Test
+public void testSelectById() throws IOException {
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    Brand brand = brandMapper.selectById(1);
+    System.out.println("brand = " + brand);
+
+    sqlSession.close();
+}
+
+@Test
+public void testSelectByCondition() throws IOException {
+
+    int status = 1;
+    String companyName = "华为";
+    String brandName = "华为";
+
+    companyName = "%" + companyName + "%";
+
+    /*Brand brand = new Brand();
+    brand.setStatus(status);
+    brand.setCompanyName(companyName);
+    brand.setBrandName(brandName);*/
+
+    Map<String, String> map = new HashMap<>();
+    // map.put("status", String.valueOf(status));
+    map.put("companyName", companyName);
+    // map.put("brandName", brandName);
+
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    List<Brand> brands = brandMapper.selectByCondition(map);
+    System.out.println("brand = " + brands);
+
+    sqlSession.close();
+}
+
+@Test
+public void testSelectByConditionSingle() throws IOException {
+
+    int status = 1;
+    String companyName = "华为";
+    String brandName = "华为";
+
+    companyName = "%" + companyName + "%";
+
+    Brand brand = new Brand();
+    //  brand.setStatus(status);
+    // brand.setCompanyName(companyName);
+    // brand.setBrandName(brandName);
+
+   /* Map<String, String> map = new HashMap<>();
+    // map.put("status", String.valueOf(status));
+    map.put("companyName", companyName);
+    // map.put("brandName", brandName);*/
+
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    List<Brand> brands = brandMapper.selectByConditionSingle(brand);
+    System.out.println("brand = " + brands);
+
+    sqlSession.close();
+}
+
+@Test
+public void testAdd() throws IOException {
+
+    int status = 1;
+    String companyName = "波导手机";
+    String brandName = "波导";
+
+    Brand brand = new Brand();
+    brand.setStatus(status);
+    brand.setCompanyName(companyName);
+    brand.setBrandName(brandName);
+    brand.setOrdered(10);
+    brand.setDescription("手机中的战斗机");
+
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession(true);
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    brandMapper.add(brand);
+
+    Integer id = brand.getId();
+
+    System.out.println("id = " + id);
+
+    // 提交事务
+    // sqlSession.commit();
+
+    sqlSession.close();
+}
+
+@Test
+public void testUpdate() throws IOException {
+
+    int status = 1;
+    String companyName = "波导手机";
+    String brandName = "波导";
+
+    Brand brand = new Brand();
+    brand.setId(5);
+    brand.setStatus(0);
+//        brand.setCompanyName(companyName);
+//        brand.setBrandName(brandName);
+//        brand.setOrdered(200);
+//        brand.setDescription("波导手机，手机中的战斗机");
+
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession(true);
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    int row = brandMapper.update(brand);
+
+    Integer id = brand.getId();
+
+    System.out.println("id = " + id + ", row = " + row);
+
+    // 提交事务
+    // sqlSession.commit();
+
+    sqlSession.close();
+}
+
+@Test
+public void testDeleteById() throws IOException {
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession(true);
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    brandMapper.deleteById(6);
+
+    sqlSession.close();
+}
+
+@Test
+public void testDeleteByIds() throws IOException {
+    InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+    SqlSession sqlSession = sqlSessionFactory.openSession(true);
+    BrandMapper brandMapper = sqlSession.getMapper(BrandMapper.class);
+
+    brandMapper.deleteByIds(new int[]{5, 7, 8});
+
+    sqlSession.close();
+}
+```
+
+### MybatisPlus
 
 ##### 支持分页功能
 
@@ -327,8 +897,6 @@ public class BookServiceImpl2 extends ServiceImpl<BookMapper, Book> implements I
     }
 }
 ```
-
-#### Dao
 
 数据层
 
@@ -769,19 +1337,19 @@ public class WebTest {
 
 #### 环境配置
 
-根据配置文件application-xxx选择对应的环境
+根据环境配置不同变量，引用方式@变量@
 
 ```xml
 <!-- 配置环境 -->
 <profiles>
     <profile>
-        <id>env_dev</id>
+        <id>dev</id>
         <properties>
             <profile.active>dev</profile.active>
         </properties>
     </profile>
     <profile>
-        <id>env_pro</id>
+        <id>pro</id>
         <properties>
             <profile.active>pro</profile.active>
         </properties>
@@ -790,6 +1358,50 @@ public class WebTest {
         </activation>
     </profile>
 </profiles>
+
+<build>
+    <!-- 设置需要打包的资源 -->
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <excludes>
+                <exclude>*.yml</exclude>
+            </excludes>
+            <includes>
+                <include>application.yml</include>
+                <include>application-${profile.active}.yml</include>
+            </includes>
+        </resource>
+    </resources>
+</build>
+```
+
+application.yml
+
+根据不同环境选择不同的application-xxx.yml配置
+
+```yaml
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/db01?serverTimezone=UTC
+    username: root
+    password: jdy200255
+  profiles:
+    active: @profile.active@ # 当前的环境
+mybatis:
+  mapper-locations: classpath:mapper/*xml
+  type-aliases-package: com.example.mybatis.pojo
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+logging:
+  level:
+    root: info
+  config: classpath:logback.xml
+  file:
+    name: server.log
+server:
+  port: 90
 ```
 
 #### @RestController
@@ -1321,7 +1933,7 @@ public class Book implements BeanNameAware {
 }
 ```
 
-#### BeanFactoryAware
+##### BeanFactoryAware
 
 ```java
 public class Book implements BeanNameAware {
@@ -1331,7 +1943,7 @@ public class Book implements BeanNameAware {
 }
 ```
 
-#### InitializingBean
+##### InitializingBean
 
 #### 加载Bean
 
@@ -1392,6 +2004,33 @@ public class App {
         // 调用bean的方法
         bean.play();
         System.out.println("bean = " + bean);
+    }
+}
+```
+
+#### SpringBeanUtils
+
+获取Bean工具类
+
+```java
+@Component
+public class SpringBeanUtils implements ApplicationContextAware {
+
+    private static ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(@NonNull ApplicationContext applicationContext) throws BeansException {
+        if (SpringBeanUtils.applicationContext == null) {
+            SpringBeanUtils.applicationContext = applicationContext;
+        }
+    }
+
+    public static Object getBean(String name) {
+        return applicationContext.getBean(name);
+    }
+
+    public static <T> T getBean(Class<T> clazz) {
+        return applicationContext.getBean(clazz);
     }
 }
 ```
