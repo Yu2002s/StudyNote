@@ -55,6 +55,14 @@ select * from stu where name like '%德%';
 
 select * from stu group by math desc, english asc;
 
+### if表达式
+select if (gender = 1, '男性', '女性') sex, count(*) from tb_emp group by gender;
+
+### case表达式
+select 
+	(case job when 1 then "老板" when 2 then "学生" else "未分配" end) 职位,
+    count(*) from tb_emp group by job;
+
 select count(id) from stu;
 	
 select max(math) from stu;	
@@ -94,10 +102,29 @@ select * from emp INNER JOIN dept on emp.dep_id = dept.id;
 select * from emp left JOIN dept on emp.dep_id = dept.id;
 #多表查询 右外连接
 select * from emp right JOIN dept on emp.dep_id = dept.id;
-# 子查询
+# 子查询 in not in
 select * from emp where age > (select age from emp where name = '张三');
 select * from emp where dep_id in (select id from dept where dep_name = '销售部' or dep_name = '研发部');
+select * from emp where (entry_date, job) = ('2009-01-01', 2)
+select * from emp where (entry_date, job) = (select entry_date, job from emp where name = 'jdy');
+select * from (select * from emp where entry_date > '2005-01-01') e, dept d where e.dept_id = d.id;
+
+# 事务
+# 开启事务
+start transaction;
+begin;
+# 提交事务
+commit;
+# 回滚事务
+rollback;
+
+## 拼接字符串
+select concat('a', 'b', 'c');
 ```
+
+### 内连接与外连接
+
+内连接查询两张表之间交集中的数据，左外连接查询左表和交集的数据，右外连接查询右表和交集的数据
 
 ### 创建表
 
